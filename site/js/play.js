@@ -289,6 +289,7 @@
       effects: [],
       pending: null,
       eventIndex: 0,
+      base: 0,
       show: 'after'
     };
 
@@ -335,12 +336,22 @@
     }
   }
 
+  function fileLabel(file) {
+    if (!session.level.showChanges) return file;
+    if (world.created.indexOf(file) !== -1) return file + ' (' + U.boardNew + ')';
+    if (world.edited.indexOf(file) !== -1) return file + ' (' + U.boardChanged + ')';
+    return file;
+  }
+
   function renderBoard() {
     var files = world.files;
     el.board.textContent = '';
     for (var i = 0; i < 4; i += 1) {
       var sq = make('span', 'sq ' + (i % 2 === 0 ? 'sq--b' : 'sq--a'));
-      if (files[i]) sq.appendChild(piece('pawn'));
+      if (files[i]) {
+        sq.appendChild(piece('pawn'));
+        if (session.level.showChanges && world.edited.indexOf(files[i]) !== -1) sq.classList.add('sq--edited');
+      }
       el.board.appendChild(sq);
     }
     if (!files.length) {
@@ -348,7 +359,7 @@
     } else {
       put(
         el['board-status'],
-        E.fill(files.length === 1 ? U.boardFiles.one : U.boardFiles.many, { files: files.join(', '), count: files.length })
+        E.fill(files.length === 1 ? U.boardFiles.one : U.boardFiles.many, { files: files.map(fileLabel).join(', '), count: files.length })
       );
     }
   }
@@ -364,7 +375,8 @@
     var canCompare = isPage && Boolean(view.before);
     var shown = isPage ? (session.show === 'before' && view.before ? view.before : view.page) : null;
 
-    put(el['preview-bar'], view.file || U.previewNone);
+    var changed = session.level.showChanges && view.file && world.edited.indexOf(view.file) !== -1;
+    put(el['preview-bar'], view.file ? (changed ? view.file + ' — ' + U.previewChanged : view.file) : U.previewNone);
     show(el['preview-empty'], view.kind === 'none');
     show(el['preview-site'], isPage);
     show(el['preview-text'], view.kind === 'note' || view.kind === 'rulebook');
@@ -388,7 +400,7 @@
   }
 
   function renderWorld() {
-    world = E.replay(session.effects);
+    world = E.replay(session.effects, session.base);
     renderBoard();
     renderPreview();
   }
@@ -431,6 +443,7 @@
       session.effects = E.fillDeep(current.board, variant()).slice();
       session.show = 'after';
     }
+    session.base = session.effects.length;
     renderWorld();
 
     put(el.stepline, E.fill(U.stepLine, { n: session.index + 1, total: total }) + ' · ' + current.name);
@@ -641,7 +654,7 @@
     if (!res) return;
     session.pending = null;
     show(el.ask, false);
-    say(E.fill(U.done, { file: res.ask ? res.ask.file : '' }), 'done');
+    say(E.fill(res.ask && res.ask.mark === '~' ? U.doneEdit : U.done, { file: res.ask ? res.ask.file : '' }), 'done');
     completeMove(res);
   }
 

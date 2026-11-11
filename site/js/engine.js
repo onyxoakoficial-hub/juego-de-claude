@@ -380,20 +380,32 @@
     Returns { files, view, before, after, text, rules }:
       files   the files on the board
       view    what the preview shows: { kind: 'page'|'note'|'rulebook'|'none', file, ... }
+      created / edited   files that moves from index `from` on made new, or changed
       before  the page as it was before the last change to it, or null
   */
-  function replay(effects) {
+  function replay(effects, from) {
     var files = [];
     var stacks = {};
     var rules = [];
     var current = { kind: 'none' };
+    var created = {};
+    var edited = {};
+    var start = from || 0;
 
     function add(file) {
       if (file && files.indexOf(file) === -1) files.push(file);
     }
 
-    (effects || []).forEach(function (effect) {
+    /* Moves made from `start` on: did each one make a new file, or change one that was already there? */
+    function note(effect, index) {
+      if (index < start || !effect.file) return;
+      if (files.indexOf(effect.file) === -1) created[effect.file] = true;
+      else if (!created[effect.file]) edited[effect.file] = true;
+    }
+
+    (effects || []).forEach(function (effect, index) {
       if (!effect) return;
+      if (effect.kind === 'page' || effect.kind === 'note' || effect.kind === 'rulebook' || effect.kind === 'undo') note(effect, index);
       if (effect.kind === 'page') {
         var stack = stacks[effect.file] || [];
         var previous = stack.length ? stack[stack.length - 1] : null;
@@ -423,7 +435,7 @@
       }
     });
 
-    return { files: files, view: current, rules: rules };
+    return { files: files, view: current, rules: rules, created: Object.keys(created), edited: Object.keys(edited) };
   }
 
   /* ---------- Progress ---------- */

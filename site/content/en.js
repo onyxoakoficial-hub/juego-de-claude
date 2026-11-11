@@ -113,7 +113,7 @@
   };
 
   var editAsk = function (what) {
-    return { question: 'May I change ' + what + '?', file: 'index.html', mark: '~', change: 'edit' };
+    return { question: 'May I change ' + what + '?', file: 'index.html', mark: '~', change: 'edit of an existing file' };
   };
 
   /* Level 3 and 4: typed answers. Words the game listens for. */
@@ -253,11 +253,15 @@
       preview: 'Preview',
       previewNote: 'shows what the assistant made',
       boardEmpty: 'Empty. No files yet.',
+      boardNew: 'new',
+      boardChanged: 'changed',
+      previewChanged: 'changed by the assistant',
       boardFiles: { one: 'One file on the board: {files}.', many: '{count} files on the board: {files}.' },
       previewNone: 'No file open',
       previewEmpty: 'Your page will show up here after your first move.',
       denied: 'Nothing changed. I only move when you say yes. Announce the move again when you are ready.',
       done: 'Done. The file {file} is on the board.',
+      doneEdit: 'Done. I changed the file {file}.',
       hintUsedRepeat: 'You used a hint, so this check does not count. Do it again with new words and no hints.',
       repeatCheck: 'Repeat the check',
       questionLabel: 'Last question',
@@ -269,9 +273,9 @@
       recapReal: 'In the real tool',
       recapNext: 'Next piece',
       recapMapButton: 'Back to the level map',
-      recapNextLevel: 'Level {n} is not built yet. It comes next in this project.',
+      recapNextLevel: 'Level {n} is not available yet.',
       lockedLevel: 'Locked. Pass level {n} first, with no hints in its check.',
-      comingSoon: 'Not built yet. It is coming in a later part of this project.',
+      comingSoon: 'Not available yet.',
       levelPassedStatus: 'Passed.',
       levelOpenStatus: 'Ready to play.',
       levelStatusSteps: '{done} of {total} steps done.',
@@ -281,7 +285,7 @@
       statusPassed: 'passed',
       statusReady: 'ready',
       statusLocked: 'locked',
-      statusSoon: 'not built yet',
+      statusSoon: 'not available yet',
       resetButton: 'Reset progress',
       resetAsk: 'This erases the steps you have finished on this device. It cannot be undone.',
       resetConfirm: 'Yes, erase my progress',
@@ -433,6 +437,7 @@
 
       /* ---------- Level 2: the Knight ---------- */
       2: {
+        showChanges: true,
         intro: 'Your first try is rarely perfect. Ask for a change, look at the result, then say exactly what you want.',
         steps: [
           {
@@ -440,7 +445,7 @@
             kind: 'build',
             name: 'A vague change',
             task: 'Ask the assistant to make “it” better. Be vague on purpose, and see what comes back.',
-            context: 'The page on the right says “Welcome to the club”. Use Before and After to compare it with the result.',
+            context: 'The file index.html is already on the board. The assistant will change that file, not make a new one. Use Before and After to compare.',
             board: pageSeed,
             variants: [{}],
             groups: changeGroups,
@@ -458,11 +463,11 @@
               notVague: { type: 'hint', reply: 'That one is clear, and it works. This time be vague on purpose: tap “it” and “better”.' },
               vague: {
                 type: 'ask',
-                reply: 'You did not say what to change or how. I will guess what “better” means: I will make the title bigger.',
+                reply: 'You did not say what to change or how. I will guess what “better” means: I will make the title bigger in the existing file index.html.',
                 ask: editAsk('index.html'),
                 effects: [{ kind: 'page', file: 'index.html', set: { size: 'large' } }],
                 completes: true,
-                verdict: 'The assistant guessed. Use Before and After: is this what you wanted? A clear instruction means no guessing.'
+                verdict: 'The assistant changed the file that was already there, and it guessed. Use Before and After: is this what you wanted?'
               }
             })
           },
@@ -491,11 +496,11 @@
             outcomes: Object.assign({}, changeCommon, {
               good: {
                 type: 'ask',
-                reply: 'I will change the title color to green in index.html.',
+                reply: 'I will change the title color to green in the existing file index.html.',
                 ask: editAsk('index.html'),
                 effects: [{ kind: 'page', file: 'index.html', set: { color: 'green' } }],
                 completes: true,
-                verdict: 'This time the result matches what you asked for. Use Before and After to see the difference.'
+                verdict: 'The assistant changed the file that was already there. This time the result matches what you asked for. Use Before and After to see it.'
               }
             })
           },
@@ -529,11 +534,11 @@
             outcomes: Object.assign({}, changeCommon, {
               good: {
                 type: 'ask',
-                reply: 'I will change {change} in index.html.',
+                reply: 'I will change {change} in the existing file index.html.',
                 ask: editAsk('index.html'),
                 effects: [{ kind: 'page', file: 'index.html', set: 'variant' }],
                 completes: true,
-                verdict: 'That was exact, so the assistant did not have to guess.'
+                verdict: 'That was exact, so the assistant did not have to guess. It changed the file that was already there.'
               }
             })
           },
@@ -552,8 +557,9 @@
           }
         ],
         recap: {
-          concept: 'Say what to change and how. Then compare Before and After, and ask again.',
+          concept: 'Say what to change and how. The assistant changes the file that is already there. Compare Before and After, then ask again.',
           items: [
+            { label: 'The file', value: 'index.html', mono: true, note: 'The assistant changed this same file. It did not make a new one.' },
             { label: 'A clear change has', value: 'a part + how', mono: false, note: 'For example: the title + green.' }
           ],
           realStart: 'In the real tool, name the file or describe what you see. A specific prompt saves you a round of corrections.',
@@ -563,6 +569,7 @@
 
       /* ---------- Level 3: the Bishop ---------- */
       3: {
+        showChanges: true,
         intro: 'A rulebook is a file the assistant reads before it starts. Write clear rules once, and every page follows them.',
         steps: [
           {
@@ -689,6 +696,7 @@
 
       /* ---------- Level 4: the Rook ---------- */
       4: {
+        showChanges: true,
         intro: 'You decide every move. Learn to say yes, say no, and take a move back.',
         steps: [
           {

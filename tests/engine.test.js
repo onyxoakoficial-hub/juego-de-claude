@@ -480,3 +480,20 @@ test('every level can be finished from start to end, step by step, by the engine
   assert.strictEqual(l4.view.page.color, 'ink');
   assert.strictEqual(solved.length, 4 + 4 + 5 + 6, 'every step of every level was played');
 });
+
+test('replay tells which files a move made new and which it changed', () => {
+  const seed = [{ kind: 'page', file: 'index.html', text: 'Chess Club' }, { kind: 'note', file: 'notes.txt', text: 'x' }];
+  const moves = [
+    { kind: 'page', file: 'index.html', set: { color: 'green' } },
+    { kind: 'rulebook', file: 'CLAUDE.md', lines: [], rules: [] },
+    { kind: 'page', file: 'rules.html', text: 'Chess Club' },
+    { kind: 'page', file: 'rules.html', set: { bg: 'blue' } }
+  ];
+  const world = E.replay([...seed, ...moves], seed.length);
+  assert.deepStrictEqual(world.edited, ['index.html']);
+  assert.deepStrictEqual(world.created.sort(), ['CLAUDE.md', 'rules.html']);
+  const none = E.replay(seed, seed.length);
+  assert.deepStrictEqual([none.created, none.edited], [[], []], 'the starting board has nothing marked');
+  const undone = E.replay([...seed, { kind: 'page', file: 'index.html', set: { color: 'red' } }, { kind: 'undo', file: 'index.html' }], seed.length);
+  assert.deepStrictEqual(undone.edited, ['index.html']);
+});

@@ -200,3 +200,32 @@ test('size budget: every page loads under 100 KB of JavaScript and a light first
 test('facts.js is data for the tests and for editing; no page needs to load it', () => {
   for (const page of pages) assert.ok(!read(page).includes('facts.js'), `${rel(page)} loads facts.js for nothing`);
 });
+
+test('the landing page promises only levels that exist', () => {
+  const html = read(path.join(SITE, 'index.html'));
+  const body = html.slice(html.indexOf('<header')).replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ');
+  const levels = globalThis.CHECKMATE.content.levels;
+  const list = globalThis.CHECKMATE.content.levelList;
+  const builtIds = Object.keys(levels).map(Number);
+
+  assert.strictEqual((html.match(/class="rank__item"/g) || []).length, builtIds.length, 'the landing lists a different number of levels than are built');
+  for (const meta of list) {
+    const shown = new RegExp(`\\b${meta.name}\\b`).test(body);
+    assert.strictEqual(shown, builtIds.includes(meta.id), `${meta.name}: ${shown ? 'is listed but not built' : 'is built but not listed'}`);
+  }
+  const numbers = ['one', 'two', 'three', 'four', 'five', 'six'];
+  for (const word of numbers.filter((_, i) => i + 1 > builtIds.length && i + 1 <= 6)) {
+    assert.ok(!new RegExp(`\\b${word}\\s+(?:short\\s+)?(?:levels|pieces|skills|lessons)\\b`, 'i').test(html), `the landing page says "${word}" levels, but only ${builtIds.length} exist`);
+  }
+  assert.ok(!/first real session|plan before anything/i.test(body), 'the landing page promises a part that does not exist yet');
+});
+
+test('the lessons that change a file say so: levels 2 to 4 show what is new and what is changed', () => {
+  const levels = globalThis.CHECKMATE.content.levels;
+  for (const n of [2, 3, 4]) assert.strictEqual(levels[n].showChanges, true, `level ${n}`);
+  assert.ok(!levels[1].showChanges, 'level 1 stays as it was (owner decision)');
+  for (const step of levels[2].steps.filter((s) => s.kind === 'build')) {
+    const text = JSON.stringify(step.outcomes);
+    if (/"ask"/.test(text)) assert.match(text, /existing file/, `level 2 step ${step.id} must say the assistant changes the existing file`);
+  }
+});

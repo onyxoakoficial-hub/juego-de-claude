@@ -132,6 +132,30 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
 - Every page ends with: "Independent, unofficial project. Not affiliated with or endorsed by Anthropic.
   Claude Code is a trademark of Anthropic, PBC."
 - No invented reviews, numbers, credentials or urgency. Every claim on a page must be true today.
+- The landing page lists and promises only levels that exist (`tests/site.test.js` checks it). Add a
+  level to the landing page only when it is built. The level map may show later pieces, marked "not
+  available yet".
+
+## Open risks
+
+- Open (owner, M3): "Una persona no entendió al empezar qué es el juego, y interpretó que el asistente
+  copia las palabras en pantalla, no que crea un archivo. Revisar tras M3 con más personas". The owner
+  chose not to change level 1 or the landing page for now. Level 2 was changed to make clear that the
+  assistant changes the file that is already there (it says "existing file", and the board and preview
+  mark files as "new" or "changed" in levels 2 to 4).
+
+## Evidence from people
+
+- Level 1, owner test (M3): one person who had never programmed finished it alone in about 2 minutes,
+  with no hints and no help. At the start they did not understand what the game was. At the end they
+  said the assistant "puso en la pantalla lo que yo escribí".
+- Still to do: the 5-second test of the landing page, and level 3 with a beginner.
+
+## Owner decisions on code (M3)
+
+- `site/js/first-win.js` (landing demo) stays separate from `site/js/engine.js`. The duplication is accepted.
+- The browser test scripts (they need Playwright) stay outside the repository. `node --test` is the
+  repository's own test.
 
 ## Testing
 
