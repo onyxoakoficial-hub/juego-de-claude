@@ -1,0 +1,93 @@
+/*
+  Level page only: the level map view and the level view.
+  Shared game parts live in game.css. Uses tokens only.
+*/
+
+.play {
+  min-height: var(--vh-full);
+  padding-block: var(--sp-4) var(--section-y);
+}
+
+.play__head {
+  display: grid;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.play__title {
+  font-size: var(--fs-500);
+}
+
+.play__back {
+  justify-self: start;
+  margin-left: calc(var(--sp-2) * -1);
+}
+
+.play__back svg {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+.play__lead {
+  max-width: var(--measure);
+  color: var(--c-ink-muted);
+}
+
+.play__noscript {
+  max-width: var(--measure);
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+}
+
+@media (min-width: 48em) {
+  .play {
+    padding-top: var(--sp-6);
+  }
+
+  .play__head {
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+  }
+}
+
+/* ---------- Map view ---------- */
+.mapview__board {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+}
+
+.mapview__side {
+  display: grid;
+  gap: var(--sp-5);
+  align-content: start;
+}
+
+.levelcard {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: start;
+}
+
+.levelcard__title {
+  font-size: var(--fs-400);
+}
+
+.levelcard__status {
+  max-width: var(--measure);
+  color: var(--c-ink-muted);
+}
+
+/* ---------- Level view ---------- */
+.levelview__stage {
+  align-content: start;
+}
+
+/* On wide screens the board and preview stay in view while the learner works. */
+@media (min-width: 64em) {
+  .levelview__table {
+    position: sticky;
+    top: var(--sp-4);
+  }
+}

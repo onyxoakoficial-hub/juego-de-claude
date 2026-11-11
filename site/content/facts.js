@@ -28,6 +28,19 @@
       source: DOCS + 'quickstart'
     },
 
+    /* How to open the real tool. The terminal command and the desktop tab are both in the quickstarts. */
+    start: {
+      terminalCommand: 'claude',
+      desktopTab: 'Code',
+      source: DOCS + 'quickstart',
+      sourceDesktop: DOCS + 'desktop-quickstart'
+    },
+
+    /* Specific instructions work better than vague ones. */
+    prompts: {
+      source: DOCS + 'best-practices'
+    },
+
     /* The mode in which the assistant asks before each change. */
     permissionModes: {
       askFirstLabel: 'Manual',

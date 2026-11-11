@@ -1,6 +1,6 @@
 /*
-  Landing page: hero with the first move, the table (board + preview), and the sections below.
-  Uses tokens only.
+  Landing page only: the hero with the first move, and the sections below it.
+  Shared game parts live in game.css. Uses tokens only.
 */
 
 /* ---------- Hero ---------- */
@@ -10,7 +10,7 @@
 
 .hero__grid {
   display: grid;
-  gap: var(--sp-6);
+  gap: var(--sp-5);
 }
 
 .hero__copy {
@@ -19,7 +19,7 @@
 }
 
 .lead {
-  max-width: var(--measure-short);
+  max-width: var(--measure);
   line-height: var(--lh-snug);
   color: var(--c-ink-muted);
 }
@@ -27,6 +27,10 @@
 @media (min-width: 48em) {
   .hero {
     padding-top: var(--sp-6);
+  }
+
+  .hero__grid {
+    gap: var(--sp-6);
   }
 
   .hero__copy {
@@ -44,505 +48,70 @@
   }
 
   .hero__grid {
-    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-rows: auto 1fr;
-    grid-template-areas:
-      "copy  table"
-      "demo  table";
-    column-gap: var(--sp-8);
+    column-gap: var(--grid-gap);
     align-items: start;
   }
 
+  .hero__copy,
+  .hero .stage {
+    grid-column: 1 / span 6;
+  }
+
+  .hero .table {
+    grid-column: 7 / span 6;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* Screens narrower than 360px or very short: drop the eyebrow and tighten, so the button stays on screen. */
+@media (max-width: 22.4375em) {
+  .hero {
+    padding-top: var(--sp-2);
+  }
+
+  .hero__grid {
+    gap: var(--sp-3);
+  }
+
   .hero__copy {
-    grid-area: copy;
+    gap: var(--sp-2);
   }
 
-  .demo {
-    grid-area: demo;
+  .hero .eyebrow {
+    display: none;
   }
 
-  .table {
-    grid-area: table;
-  }
-}
-
-/* ---------- The first move (demo card) ---------- */
-.demo {
-  display: grid;
-  gap: var(--sp-3);
-  padding: var(--sp-4);
-  scroll-margin-top: var(--sp-4);
-}
-
-.demo__task {
-  font-weight: var(--fw-strong);
-  line-height: var(--lh-snug);
-}
-
-@media (min-width: 48em) {
-  .demo {
-    gap: var(--sp-4);
-    padding: var(--sp-5);
+  .hero .stage {
+    gap: var(--sp-2);
+    padding: var(--sp-3);
   }
 
-  .demo__task {
-    font-size: var(--fs-300);
-  }
-}
-
-.demo__actions {
-  display: grid;
-  gap: var(--sp-3);
-  justify-items: center;
-}
-
-.demo__noscript {
-  padding: var(--sp-4);
-  border: var(--hairline) solid var(--c-line-strong);
-  border-radius: var(--r-2);
-}
-
-/* Where am I: three steps, the current one marked by weight, fill and aria-current. */
-.steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-4);
-  font-size: var(--fs-100);
-  color: var(--c-ink-muted);
-}
-
-.steps__item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.steps__n {
-  display: inline-grid;
-  place-items: center;
-  width: var(--step-dot);
-  height: var(--step-dot);
-  border: var(--hairline) solid var(--c-line-strong);
-  border-radius: var(--r-full);
-  font-weight: var(--fw-strong);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.steps__item[aria-current="step"] {
-  color: var(--c-ink);
-  font-weight: var(--fw-strong);
-}
-
-.steps__item[aria-current="step"] .steps__n {
-  border-color: var(--c-accent);
-  background-color: var(--c-accent);
-  color: var(--c-on-accent);
-}
-
-.steps__item[data-done] .steps__n {
-  border-color: var(--c-accent);
-  background-color: var(--c-accent-soft);
-  color: var(--c-on-accent-soft);
-}
-
-/* The instruction being built, like a line on a score sheet. */
-.say {
-  display: grid;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-2);
-  background-color: var(--c-surface-sunk);
-  box-shadow: var(--shadow-inset);
-}
-
-.say__label {
-  color: var(--c-ink-muted);
-}
-
-.say__line {
-  min-height: calc(var(--fs-200) * var(--lh-snug) * 2);
-  font-family: var(--font-display);
-  font-weight: var(--fw-display);
-  line-height: var(--lh-snug);
-}
-
-@media (min-width: 48em) {
-  .say {
-    padding: var(--sp-3) var(--sp-4);
-  }
-
-  .say__line {
-    min-height: calc(var(--fs-300) * var(--lh-snug) * 2);
-    font-size: var(--fs-300);
-  }
-}
-
-.say__line[data-empty] {
-  color: var(--c-ink-muted);
-  font-weight: var(--fw-body);
-}
-
-/* Word tiles. Pressed state: tint, heavier edge and a check badge (never colour alone). */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-}
-
-.chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  padding: var(--sp-2) var(--sp-4);
-  border: var(--hairline) solid var(--c-line-strong);
-  border-radius: var(--r-2);
-  background-color: var(--c-surface);
-  box-shadow: var(--shadow-1);
-  font-weight: var(--fw-strong);
-  line-height: var(--lh-snug);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color var(--dur-instant) var(--ease-out),
-    box-shadow var(--dur-instant) var(--ease-out),
-    transform var(--dur-instant) var(--ease-out);
-}
-
-.chip:active {
-  transform: translateY(var(--shift-press));
-}
-
-.chip__check {
-  position: absolute;
-  top: calc(var(--badge) / -2);
-  right: calc(var(--badge) / -2);
-  display: none;
-  width: var(--badge);
-  height: var(--badge);
-  padding: var(--sp-1);
-  border-radius: var(--r-full);
-  background-color: var(--c-accent);
-  color: var(--c-on-accent);
-}
-
-.chip[aria-pressed="true"] {
-  border-color: var(--c-accent);
-  background-color: var(--c-accent-soft);
-  color: var(--c-on-accent-soft);
-  box-shadow: inset 0 0 0 var(--hairline) var(--c-accent);
-}
-
-.chip[aria-pressed="true"] .chip__check {
-  display: block;
-}
-
-.chip[disabled] {
-  box-shadow: none;
-  cursor: default;
-  transform: none;
-}
-
-.chip[disabled]:not([aria-pressed="true"]) {
-  border-color: var(--c-line);
-  color: var(--c-ink-muted);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .chip:not([disabled]):hover {
-    background-color: var(--c-surface-sunk);
-  }
-
-  .chip[aria-pressed="true"]:not([disabled]):hover {
-    background-color: var(--c-accent-soft);
-    box-shadow: inset 0 0 0 var(--line-bold) var(--c-accent);
-  }
-}
-
-/* The assistant's answer. */
-.reply {
-  display: grid;
-  gap: var(--sp-1);
-  padding-left: var(--sp-4);
-  border-left: var(--line-bold) solid var(--c-line-strong);
-}
-
-.reply__who {
-  color: var(--c-ink-muted);
-}
-
-.reply__text {
-  animation: rise var(--dur-state) var(--ease-out) both;
-}
-
-.reply[data-tone="hint"] {
-  border-left-color: var(--c-warn);
-}
-
-.reply[data-tone="done"] {
-  border-left-color: var(--c-accent);
-}
-
-/* "May I move?" - the permission prompt. */
-.ask {
-  display: grid;
-  gap: var(--sp-3);
-  padding: var(--sp-4);
-  border: var(--hairline) solid var(--c-accent);
-  border-radius: var(--r-2);
-  background-color: var(--c-accent-soft);
-  color: var(--c-on-accent-soft);
-  scroll-margin-block: var(--sp-4);
-  animation: rise var(--dur-state) var(--ease-out) both;
-}
-
-.ask__question {
-  font-family: var(--font-display);
-  font-size: var(--fs-400);
-  font-weight: var(--fw-display);
-  line-height: var(--lh-tight);
-}
-
-.ask__change {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-1);
-  background-color: var(--c-surface-raised);
-  color: var(--c-ink);
-  font-family: var(--font-mono);
-  font-size: var(--fs-100);
-}
-
-.ask__change code {
-  padding: 0;
-  background-color: transparent;
-  font-weight: var(--fw-strong);
-}
-
-.ask__buttons {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--sp-3);
-}
-
-.ask .btn--secondary {
-  border-color: var(--c-on-accent-soft);
-  color: var(--c-on-accent-soft);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ask .btn--secondary:hover {
-    background-color: var(--c-surface-raised);
-    border-color: var(--c-on-accent-soft);
-  }
-}
-
-/* ---------- The table: board and preview ---------- */
-.table {
-  display: grid;
-  gap: var(--sp-5);
-  padding: var(--sp-5);
-  border: var(--hairline) solid var(--c-band-line);
-  border-radius: var(--r-4);
-  box-shadow: var(--shadow-2);
-  scroll-margin-top: var(--sp-4);
-}
-
-.table__part {
-  display: grid;
-  gap: var(--sp-3);
-}
-
-.table .label__note {
-  color: var(--c-on-band-muted);
-}
-
-.board__rank,
-.board__files {
-  display: grid;
-  grid-template-columns: repeat(4, var(--sq));
-  justify-content: start;
-}
-
-.board__rank {
-  width: max-content;
-  padding: var(--sp-1);
-  border-radius: var(--r-1);
-  background-color: var(--c-band-raised);
-  box-shadow: var(--shadow-3);
-}
-
-.board__files {
-  padding-inline: var(--sp-1);
-  min-height: calc(var(--fs-100) * var(--lh-body));
-  font-family: var(--font-mono);
-  font-size: var(--fs-100);
-  color: var(--c-on-band);
-}
-
-.board__status {
-  font-size: var(--fs-100);
-  color: var(--c-on-band-muted);
-}
-
-.sq {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-}
-
-.sq--light {
-  background-color: var(--c-square-light);
-  color: var(--c-piece-dark);
-}
-
-.sq--dark {
-  background-color: var(--c-square-dark);
-  color: var(--c-piece-light);
-}
-
-.piece {
-  width: var(--piece-scale);
-  height: var(--piece-scale);
-}
-
-.piece--arriving {
-  animation: land var(--dur-move) var(--ease-out) both;
-}
-
-.preview__window {
-  overflow: hidden;
-  border-radius: var(--r-2);
-  background-color: var(--c-surface-raised);
-  color: var(--c-ink);
-  box-shadow: var(--shadow-3);
-}
-
-.preview__bar {
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: var(--hairline) solid var(--c-line);
-  background-color: var(--c-surface-sunk);
-  font-family: var(--font-mono);
-  font-size: var(--fs-100);
-  color: var(--c-ink-muted);
-}
-
-.preview__page {
-  display: grid;
-  place-items: center;
-  min-height: var(--preview-min);
-  padding: var(--sp-5);
-  text-align: center;
-}
-
-.preview__empty {
-  max-width: var(--measure-short);
-  color: var(--c-ink-muted);
-}
-
-.preview__heading {
-  font-family: var(--font-display);
-  font-size: var(--fs-500);
-  font-weight: var(--fw-display);
-  line-height: var(--lh-tight);
-  letter-spacing: var(--ls-heading);
-  text-wrap: balance;
-  overflow-wrap: anywhere;
-  animation: rise var(--dur-move) var(--ease-out) both;
-}
-
-/* The first win. */
-.win {
-  display: grid;
-  gap: var(--sp-4);
-  justify-items: start;
-  padding: var(--sp-5);
-  border-radius: var(--r-3);
-  background-color: var(--c-surface-raised);
-  color: var(--c-ink);
-  box-shadow: var(--shadow-3);
-  animation: rise var(--dur-win) var(--ease-out) both;
-}
-
-.win__mark {
-  width: var(--icon-lg);
-  height: var(--icon-lg);
-  padding: var(--sp-1);
-  border-radius: var(--r-full);
-  background-color: var(--c-accent);
-  color: var(--c-on-accent);
-}
-
-.win__title {
-  font-size: var(--fs-400);
-}
-
-.win__terms {
-  padding-top: var(--sp-4);
-  border-top: var(--hairline) solid var(--c-line);
-  color: var(--c-ink-muted);
-}
-
-.win__terms strong {
-  color: var(--c-ink);
-}
-
-.win__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2) var(--sp-4);
-}
-
-.win :focus-visible {
-  outline-color: var(--c-focus);
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(var(--shift-in));
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes land {
-  from {
-    opacity: 0;
-    transform: translateY(var(--shift-piece)) scale(var(--scale-in));
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
+  .hero .chips {
+    gap: var(--sp-2);
   }
 }
 
 /* ---------- How the game works ---------- */
 .how__steps {
   display: grid;
-  gap: var(--sp-6);
-  counter-reset: how;
+  gap: var(--sp-5);
 }
 
 .how__step {
   display: grid;
-  gap: var(--sp-2);
+  grid-template-columns: var(--sp-7) minmax(0, 1fr);
+  gap: var(--sp-1) var(--sp-4);
   padding-top: var(--sp-4);
   border-top: var(--hairline) solid var(--c-line-strong);
+  max-width: calc(var(--measure) + var(--sp-7) + var(--sp-4));
 }
 
 .how__n {
+  grid-row: span 2;
   font-family: var(--font-display);
-  font-size: var(--numeral);
+  font-size: var(--fs-500);
   font-weight: var(--fw-display);
   line-height: 1;
   color: var(--c-ink-muted);
@@ -550,21 +119,16 @@
 }
 
 .how__step p {
+  grid-column: 2;
   color: var(--c-ink-muted);
 }
 
 .how__real {
-  margin-top: var(--sp-7);
+  display: grid;
+  gap: var(--sp-3);
   padding-left: var(--sp-4);
   border-left: var(--line-bold) solid var(--c-accent);
   max-width: var(--measure);
-}
-
-@media (min-width: 48em) {
-  .how__steps {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--sp-7);
-  }
 }
 
 /* ---------- Six pieces, six skills: one rank of the board ---------- */
@@ -632,11 +196,6 @@
 }
 
 /* ---------- What you will practice / who it is for ---------- */
-.fit__grid {
-  display: grid;
-  gap: var(--sp-8);
-}
-
 .fit__col {
   display: grid;
   gap: var(--sp-5);
@@ -646,6 +205,7 @@
 .ticks {
   display: grid;
   gap: var(--sp-3);
+  max-width: var(--measure);
 }
 
 .ticks li {
@@ -671,23 +231,19 @@
   color: var(--c-ink-muted);
 }
 
-@media (min-width: 48em) {
-  .fit__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 /* ---------- Nothing hidden ---------- */
 .facts {
   display: grid;
-  gap: var(--sp-6);
+  gap: var(--sp-6) var(--grid-gap);
 }
 
 .facts__item {
   display: grid;
   gap: var(--sp-2);
+  align-content: start;
   padding-top: var(--sp-4);
   border-top: var(--hairline) solid var(--c-line-strong);
+  max-width: var(--measure);
 }
 
 .facts dt {
@@ -701,10 +257,9 @@
   color: var(--c-ink-muted);
 }
 
-@media (min-width: 48em) {
+@media (min-width: 80em) {
   .facts {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--sp-7);
   }
 }
 
@@ -728,6 +283,7 @@
   font-weight: var(--fw-strong);
   cursor: pointer;
   list-style: none;
+  transition: color var(--dur-instant) var(--ease-out);
 }
 
 .faq__q::-webkit-details-marker {
@@ -741,13 +297,27 @@
   transition: transform var(--dur-state) var(--ease-in-out);
 }
 
+.faq__q:active {
+  color: var(--c-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .faq__q:hover {
+    color: var(--c-accent);
+  }
+
+  .faq__q:hover svg {
+    color: var(--c-accent);
+  }
+}
+
 .faq__item[open] .faq__q svg {
   transform: rotate(var(--half-turn));
 }
 
 .faq__a {
   display: grid;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   padding-bottom: var(--sp-5);
   color: var(--c-ink-muted);
 }
@@ -762,17 +332,5 @@
 }
 
 .final__inner h2 {
-  max-width: var(--measure-heading);
-}
-
-/* ---------- Placeholder page for the game (built in the next milestone) ---------- */
-.shell {
-  display: grid;
-  gap: var(--sp-5);
-  justify-items: start;
-  padding-block: var(--section-y);
-}
-
-.shell h1 {
   max-width: var(--measure-heading);
 }

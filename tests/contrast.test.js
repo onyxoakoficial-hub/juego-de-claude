@@ -43,7 +43,20 @@ const PAIRS = [
   ['c-piece-light', 'c-square-dark', UI, 'light piece on a dark square'],
   ['c-piece-dark', 'c-square-light', UI, 'dark piece on a light square'],
   ['c-square-light', 'c-band', UI, 'board squares against the table'],
-  ['c-on-band', 'c-band', UI, 'file name under the board']
+  ['c-on-band', 'c-band', UI, 'file name under the board'],
+  ['c-ink', 'c-board-a', UI, 'pieces on the light board squares'],
+  ['c-ink', 'c-board-b', UI, 'pieces on the tinted board squares'],
+  ['c-accent', 'c-board-a', UI, 'passed-level check mark on a light square'],
+  ['c-accent', 'c-board-b', UI, 'passed-level check mark on a tinted square'],
+  ['c-ink-muted', 'c-board-a', UI, 'lock badge and locked pieces on a light square'],
+  ['c-ink-muted', 'c-board-b', UI, 'lock badge and locked pieces on a tinted square'],
+  ['c-board-edge', 'c-surface', UI, 'outline of the map'],
+  ['c-board-edge', 'c-surface-sunk', UI, 'outline of the board on the table'],
+  ['c-ink', 'c-surface-sunk', TEXT, 'text on the table'],
+  ['c-ink-muted', 'c-surface-sunk', TEXT, 'secondary text on the table'],
+  ['c-accent', 'c-surface-sunk', UI, 'accent edges on the table'],
+  ['c-line-strong', 'c-surface-sunk', UI, 'edges of controls on the table'],
+  ['c-on-accent', 'c-accent', UI, 'check badge on a chosen tile']
 ];
 
 const tokens = readColorTokens();

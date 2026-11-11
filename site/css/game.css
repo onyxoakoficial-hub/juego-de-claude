@@ -1,0 +1,858 @@
+/*
+  Game parts shared by the landing page demo and the level page:
+  the prompt builder, the assistant's answers, the permission prompt,
+  the table (project board + preview), result cards and the level map.
+  Uses tokens only.
+*/
+
+/* ---------- The stage: the card the learner works in ---------- */
+.stage {
+  display: grid;
+  gap: var(--sp-3);
+  scroll-margin-top: var(--sp-4);
+}
+
+@media (min-width: 48em) {
+  .stage {
+    gap: var(--sp-4);
+  }
+}
+
+.stage__context {
+  color: var(--c-ink-muted);
+  max-width: var(--measure);
+}
+
+.stage__task {
+  font-family: var(--font-text);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-snug);
+  letter-spacing: 0;
+  max-width: var(--measure);
+}
+
+@media (min-width: 48em) {
+  .stage__task {
+    font-size: var(--fs-300);
+  }
+}
+
+.stage__actions {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+}
+
+.stage__noscript {
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+}
+
+/* ---------- Where am I: numbered steps (landing demo) ---------- */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+.steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.steps__n {
+  display: inline-grid;
+  place-items: center;
+  width: var(--step-dot);
+  height: var(--step-dot);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-full);
+  font-weight: var(--fw-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.steps__item[aria-current="step"] {
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
+}
+
+.steps__item[aria-current="step"] .steps__n {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.steps__item[data-done] .steps__n {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent-soft);
+  color: var(--c-on-accent-soft);
+}
+
+/* ---------- Where am I: the piece on its track (level page) ---------- */
+.track {
+  display: grid;
+  grid-template-columns: repeat(5, var(--track-sq));
+  gap: var(--sp-1) 0;
+  justify-content: start;
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+.track__sq {
+  display: grid;
+  place-items: center;
+  height: var(--track-sq);
+  border-block: var(--hairline) solid var(--c-board-edge);
+  background-color: var(--c-board-a);
+  color: var(--c-ink);
+}
+
+.track__sq:nth-child(even) {
+  background-color: var(--c-board-b);
+}
+
+.track__sq:first-child {
+  border-left: var(--hairline) solid var(--c-board-edge);
+}
+
+.track__sq:last-child {
+  border-right: var(--hairline) solid var(--c-board-edge);
+}
+
+.track .piece--moved {
+  animation: slide var(--dur-move) var(--ease-in-out) both;
+}
+
+/* ---------- The prompt being built, like a line on a score sheet ---------- */
+.say {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2);
+  background-color: var(--c-surface-sunk);
+  box-shadow: var(--shadow-inset);
+}
+
+.say__line {
+  min-height: calc(var(--fs-200) * var(--lh-snug) * 2);
+  font-family: var(--font-display);
+  font-weight: var(--fw-display);
+  line-height: var(--lh-snug);
+}
+
+.say__line[data-empty] {
+  color: var(--c-ink-muted);
+  font-weight: var(--fw-body);
+}
+
+@media (min-width: 48em) {
+  .say {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .say__line {
+    min-height: calc(var(--fs-300) * var(--lh-snug) * 2);
+    font-size: var(--fs-300);
+  }
+}
+
+/* ---------- Word tiles. Chosen: tint, heavier edge and a check badge (never colour alone) ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: var(--sp-2) var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background-color: var(--c-surface);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-snug);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) var(--ease-out),
+    border-color var(--dur-instant) var(--ease-out),
+    transform var(--dur-instant) var(--ease-out);
+}
+
+.chip:active {
+  transform: scale(var(--scale-press));
+}
+
+.chip__check {
+  position: absolute;
+  top: calc(var(--badge) / -2);
+  right: calc(var(--badge) / -2);
+  display: none;
+  width: var(--badge);
+  height: var(--badge);
+  padding: var(--sp-1);
+  border-radius: var(--r-full);
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent-soft);
+  color: var(--c-on-accent-soft);
+  box-shadow: inset 0 0 0 var(--hairline) var(--c-accent);
+}
+
+.chip[aria-pressed="true"] .chip__check {
+  display: block;
+}
+
+.chip[disabled] {
+  cursor: default;
+  transform: none;
+}
+
+.chip[disabled]:not([aria-pressed="true"]) {
+  border-color: var(--c-line);
+  color: var(--c-ink-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chip:not([disabled]):hover {
+    background-color: var(--c-surface-sunk);
+    border-color: var(--c-ink);
+  }
+
+  .chip[aria-pressed="true"]:not([disabled]):hover {
+    background-color: var(--c-accent-soft);
+    border-color: var(--c-accent);
+    box-shadow: inset 0 0 0 var(--line-bold) var(--c-accent);
+  }
+}
+
+/* ---------- The assistant's answer ---------- */
+.reply {
+  display: grid;
+  gap: var(--sp-1);
+  padding-left: var(--sp-4);
+  border-left: var(--line-bold) solid var(--c-line-strong);
+}
+
+.reply__text {
+  max-width: var(--measure);
+  animation: rise var(--dur-state) var(--ease-out) both;
+}
+
+.reply[data-tone="hint"] {
+  border-left-color: var(--c-warn);
+}
+
+.reply[data-tone="done"] {
+  border-left-color: var(--c-accent);
+}
+
+/* ---------- A hint the learner asked for ---------- */
+.hint {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--hairline) solid var(--c-warn);
+  border-radius: var(--r-2);
+  animation: rise var(--dur-state) var(--ease-out) both;
+}
+
+.hint__note {
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+/* ---------- "May I move?" - the permission prompt ---------- */
+.ask {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-accent);
+  border-radius: var(--r-2);
+  background-color: var(--c-accent-soft);
+  color: var(--c-on-accent-soft);
+  scroll-margin-block: var(--sp-4);
+  animation: rise var(--dur-state) var(--ease-out) both;
+}
+
+.ask__question {
+  font-family: var(--font-display);
+  font-size: var(--fs-400);
+  font-weight: var(--fw-display);
+  line-height: var(--lh-tight);
+}
+
+.ask__change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-1);
+  background-color: var(--c-surface-raised);
+  color: var(--c-ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-100);
+}
+
+.ask__change code {
+  padding: 0;
+  background-color: transparent;
+  font-weight: var(--fw-strong);
+}
+
+.ask__buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--sp-3);
+}
+
+.ask .btn--secondary {
+  border-color: var(--c-on-accent-soft);
+  color: var(--c-on-accent-soft);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ask .btn--secondary:hover {
+    background-color: var(--c-surface-raised);
+    border-color: var(--c-on-accent-soft);
+  }
+}
+
+/* ---------- What happened: the result of a move ---------- */
+.verdict {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: start;
+  scroll-margin-block: var(--sp-4);
+  animation: rise var(--dur-state) var(--ease-out) both;
+}
+
+.verdict__line {
+  display: grid;
+  grid-template-columns: var(--icon-lg) minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+  max-width: var(--measure);
+  font-weight: var(--fw-strong);
+}
+
+.verdict__mark {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  padding: var(--sp-1);
+  border-radius: var(--r-full);
+  background-color: var(--c-surface-sunk);
+  color: var(--c-ink);
+}
+
+.verdict[data-tone="good"] .verdict__mark {
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+/* ---------- One question, a few answers ---------- */
+.options {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.option {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--icon-md) minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background-color: var(--c-surface);
+  line-height: var(--lh-snug);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) var(--ease-out),
+    border-color var(--dur-instant) var(--ease-out),
+    transform var(--dur-instant) var(--ease-out);
+}
+
+.option:active {
+  transform: scale(var(--scale-press));
+}
+
+.option__mark {
+  display: grid;
+  place-items: center;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  margin-top: var(--sp-1);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-full);
+  color: var(--c-ink);
+}
+
+.option__mark svg {
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+}
+
+.option[data-state="right"] {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent-soft);
+  color: var(--c-on-accent-soft);
+  font-weight: var(--fw-strong);
+}
+
+.option[data-state="right"] .option__mark {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.option[data-state="right"] .option__mark svg,
+.option[data-state="wrong"] .option__mark svg {
+  visibility: visible;
+}
+
+.option[data-state="wrong"] {
+  border-color: var(--c-line);
+  color: var(--c-ink-muted);
+}
+
+.option[data-state="wrong"] .option__mark {
+  color: var(--c-ink-muted);
+}
+
+.option[disabled] {
+  cursor: default;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .option:not([disabled]):hover {
+    background-color: var(--c-surface-sunk);
+    border-color: var(--c-ink);
+  }
+}
+
+/* ---------- The table: the project board and the preview ---------- */
+.table {
+  display: grid;
+  gap: var(--sp-5);
+  align-content: start;
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-line);
+  border-radius: var(--r-4);
+  background-color: var(--c-surface-sunk);
+  scroll-margin-top: var(--sp-4);
+}
+
+@media (min-width: 48em) {
+  .table {
+    padding: var(--sp-5);
+  }
+}
+
+.table__part {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.board__rank,
+.board__files {
+  display: grid;
+  grid-template-columns: repeat(4, var(--sq));
+  justify-content: start;
+}
+
+.board__rank {
+  width: max-content;
+  border: var(--hairline) solid var(--c-board-edge);
+}
+
+.board__files {
+  min-height: calc(var(--fs-100) * var(--lh-body));
+  font-family: var(--font-mono);
+  font-size: var(--fs-100);
+}
+
+.board__status {
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+.sq {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+}
+
+/* Quiet squares, for boards that sit on a light surface. */
+.sq--a {
+  background-color: var(--c-board-a);
+  color: var(--c-ink);
+}
+
+.sq--b {
+  background-color: var(--c-board-b);
+  color: var(--c-ink);
+}
+
+/* Strong squares, for the rank on the dark felt band. */
+.sq--light {
+  background-color: var(--c-square-light);
+  color: var(--c-piece-dark);
+}
+
+.sq--dark {
+  background-color: var(--c-square-dark);
+  color: var(--c-piece-light);
+}
+
+.piece {
+  width: var(--piece-scale);
+  height: var(--piece-scale);
+}
+
+.piece--arriving {
+  animation: land var(--dur-move) var(--ease-out) both;
+}
+
+.preview__window {
+  overflow: hidden;
+  border: var(--hairline) solid var(--c-card-edge);
+  border-radius: var(--r-2);
+  background-color: var(--c-surface-raised);
+  box-shadow: var(--shadow-2);
+}
+
+.preview__bar {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: var(--hairline) solid var(--c-line);
+  background-color: var(--c-surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+.preview__page {
+  display: grid;
+  place-items: center;
+  min-height: var(--preview-min);
+  padding: var(--sp-5);
+  text-align: center;
+}
+
+.preview__empty {
+  max-width: var(--measure-short);
+  color: var(--c-ink-muted);
+}
+
+.preview__heading {
+  font-family: var(--font-display);
+  font-size: var(--fs-500);
+  font-weight: var(--fw-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-heading);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  animation: rise var(--dur-move) var(--ease-out) both;
+}
+
+/* A plain text note: what the assistant makes when the prompt does not name a web page. */
+.preview__note {
+  justify-self: start;
+  align-self: start;
+  font-family: var(--font-mono);
+  font-size: var(--fs-100);
+  text-align: left;
+  overflow-wrap: anywhere;
+  animation: rise var(--dur-move) var(--ease-out) both;
+}
+
+/* ---------- A win: the first move, or a finished level ---------- */
+.win {
+  display: grid;
+  gap: var(--sp-4);
+  justify-items: start;
+  padding: var(--sp-5);
+  border: var(--hairline) solid var(--c-card-edge);
+  border-radius: var(--r-3);
+  background-color: var(--c-surface-raised);
+  box-shadow: var(--shadow-2);
+  animation: rise var(--dur-win) var(--ease-out) both;
+}
+
+.win p {
+  max-width: var(--measure);
+}
+
+.win__mark {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  padding: var(--sp-1);
+  border-radius: var(--r-full);
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.win__title {
+  font-size: var(--fs-400);
+}
+
+.win__terms {
+  padding-top: var(--sp-4);
+  border-top: var(--hairline) solid var(--c-line);
+  color: var(--c-ink-muted);
+}
+
+.win__terms strong {
+  color: var(--c-ink);
+}
+
+.win__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+}
+
+/* ---------- Recap at the end of a level ---------- */
+.recap {
+  display: grid;
+  gap: var(--sp-5);
+  justify-items: start;
+  animation: rise var(--dur-win) var(--ease-out) both;
+}
+
+.recap__title {
+  font-size: var(--fs-400);
+}
+
+.recap__block {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+  padding-top: var(--sp-4);
+  border-top: var(--hairline) solid var(--c-line);
+}
+
+.recap__concept {
+  max-width: var(--measure);
+  font-size: var(--fs-300);
+  line-height: var(--lh-snug);
+}
+
+.recap__facts {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.recap__fact {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+.recap__fact dt {
+  color: var(--c-ink-muted);
+}
+
+.recap__fact dd {
+  font-weight: var(--fw-strong);
+}
+
+.recap__fact .fine {
+  font-weight: var(--fw-body);
+  max-width: var(--measure);
+}
+
+.recap__value--mono {
+  justify-self: start;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-1);
+  background-color: var(--c-surface-sunk);
+  font-family: var(--font-mono);
+}
+
+.recap__next {
+  max-width: var(--measure);
+}
+
+/* ---------- The level map: six files, four ranks ---------- */
+.map {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: 100%;
+  max-width: var(--map-max);
+  border: var(--hairline) solid var(--c-board-edge);
+}
+
+.map__file {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(4, auto);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.map__file .sq {
+  width: 100%;
+}
+
+.map__file:nth-child(odd) .sq:nth-child(odd),
+.map__file:nth-child(even) .sq:nth-child(even) {
+  background-color: var(--c-board-b);
+}
+
+.map__file:nth-child(odd) .sq:nth-child(even),
+.map__file:nth-child(even) .sq:nth-child(odd) {
+  background-color: var(--c-board-a);
+}
+
+.map__file .sq {
+  color: var(--c-ink);
+}
+
+.map__file[data-state="passed"] .sq {
+  color: var(--c-accent);
+}
+
+.map__file[data-state="locked"] .sq {
+  color: var(--c-ink-muted);
+}
+
+/* The chosen level: an edge inside the file, plus aria-pressed for assistive tech. */
+.map__file[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--line-bold) solid var(--c-accent);
+  pointer-events: none;
+}
+
+.map__file:focus-visible {
+  outline-offset: calc(var(--focus-offset) * -2);
+  z-index: 1;
+}
+
+.map__badge {
+  position: absolute;
+  top: var(--sp-1);
+  right: var(--sp-1);
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  color: var(--c-ink-muted);
+}
+
+.map__file[data-state="passed"] .map__badge {
+  color: var(--c-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .map__file:hover .piece {
+    transform: translateY(calc(var(--sp-1) * -1));
+  }
+}
+
+.map .piece {
+  transition: transform var(--dur-instant) var(--ease-out);
+}
+
+.map__file:active .piece {
+  transform: scale(var(--scale-press));
+}
+
+/* ---------- Small notices ---------- */
+.notice {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: start;
+  max-width: var(--measure);
+}
+
+.notice__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--shift-in));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(var(--shift-piece)) scale(var(--scale-in));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The piece arrives from the square on its left. With reduced motion it fades in place. */
+@keyframes slide {
+  from {
+    opacity: var(--move-fade);
+    transform: translateX(var(--shift-track));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- Tile groups in a level ---------- */
+.groups {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.group {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.stage__top {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.stage__build {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.win__mark-row {
+  display: flex;
+}

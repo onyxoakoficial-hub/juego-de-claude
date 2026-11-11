@@ -54,6 +54,15 @@ Mastery rule (non-negotiable): a level unlocks only when the previous one is pas
 Using a hint is allowed, but then the check is repeated clean with a new variant. Before advancing, the
 learner answers "what did the assistant just do, and why?".
 
+How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
+- Hints in teaching steps cost nothing. A hint during a check means that check does not count: it is
+  repeated with the next fixed variant, and it is not saved as done.
+- Finishing steps never passes a level. Only a clean check followed by the right answer to the question
+  calls `markPassed`. Level N opens only when level N-1 is passed. The address bar cannot skip ahead.
+- Variants come in a fixed order and wrap around. There is no randomness anywhere.
+- A level is data in `site/content/en.js` (tiles, rules, outcomes, hints, recap). Adding level 2 to 6
+  means adding data; `tests/content.test.js` then checks it automatically.
+
 ## Game rules
 
 - The session is simulated. No real AI calls, no API keys, no network requests.
@@ -83,9 +92,15 @@ learner answers "what did the assistant just do, and why?".
 - No inline scripts, inline styles or event attributes in HTML.
 - Text the learner types is shown with `textContent` only, never inserted as HTML.
 - Game and lesson text lives in `site/content/en.js`. Logic files contain no wording.
-  Static copy of the landing page lives in the HTML so it works without JavaScript.
+- Approved exception (owner, M2): the static copy of the landing page (`index.html`) stays in the HTML,
+  not in `en.js`, so it can be read without JavaScript and paints first. To add a language, translate
+  `en.js` and the HTML pages.
+- Approved exception (owner, M2): the system monospace is the only font besides the two families, and
+  only for file names and commands. No font file is loaded for it.
 - Progress is saved only in the browser (`localStorage`, wrapped in try/catch) with a visible
-  "Reset progress" control. No personal data is collected.
+  "Reset progress" control. No personal data is collected. Only `js/engine.js` touches storage.
+- No visit counting for now (owner decision, M2). In M5, review only free options and verify the real
+  price before proposing one.
 - Mobile first from 360 px. Full keyboard support. WCAG 2.2 AA. Light and dark themes.
   `prefers-reduced-motion` is respected.
 - Budgets: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less, under 100 KB of JavaScript,
@@ -96,7 +111,7 @@ learner answers "what did the assistant just do, and why?".
 - Concept: "tournament set on felt". Bone ivory, ebony ink, one felt-green accent.
 - Every colour, size, space, radius, shadow and duration is a token in `site/css/tokens.css`.
   No other stylesheet uses a raw value.
-- Two type families: Fraunces (display) and Atkinson Hyperlegible Next (text). Three weights.
+- Two type families: Fraunces (display) and Atkinson Hyperlegible Next (text), plus the monospace exception above. Three weights.
 - The accent is for the primary action. One primary button per view.
 - Motion only where it explains something: the piece move, the permission prompt, the level win.
 - Chess pieces and icons are original SVG drawn for this project. No emoji as icons.
@@ -116,9 +131,9 @@ learner answers "what did the assistant just do, and why?".
 node --test
 ```
 
-Runs the checks in `tests/` (no dependencies): contrast of every colour pair, tokens-only stylesheets,
-the scripted outcomes, nothing loaded from other websites, the unofficial notice on every page, the
-JavaScript budget.
+Runs the checks in `tests/` (no dependencies): contrast of every colour pair in both themes, tokens-only
+stylesheets, the session engine and the mastery rule, the lesson data, nothing loaded from other websites,
+storage used only by the progress store, the unofficial notice on every page, the JavaScript budget.
 
 Before each milestone review also test in a real browser, opening `site/index.html` from disk: no console
 errors, no network requests, the full flow with touch and with keyboard only, widths from 320 to 1920 px,

@@ -1,5 +1,5 @@
 /*
-  Components shared by every page: header, labels, buttons, cards, footer.
+  Components shared by every page: header, labels, buttons, cards, grid, footer.
   Uses tokens only.
 */
 
@@ -34,6 +34,18 @@
   color: var(--c-accent);
 }
 
+a.wordmark:active {
+  transform: scale(var(--scale-press));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.wordmark:hover {
+    text-decoration: underline;
+    text-decoration-thickness: var(--hairline);
+    text-underline-offset: var(--sp-1);
+  }
+}
+
 .site-header__note {
   font-size: var(--fs-100);
   color: var(--c-ink-muted);
@@ -49,7 +61,8 @@
   text-transform: uppercase;
 }
 
-.eyebrow {
+.eyebrow,
+.label--muted {
   color: var(--c-ink-muted);
 }
 
@@ -57,11 +70,18 @@
   font-weight: var(--fw-body);
   letter-spacing: 0;
   text-transform: none;
+  color: var(--c-ink-muted);
 }
 
 .fine {
   font-size: var(--fs-100);
   color: var(--c-ink-muted);
+}
+
+/* File names and commands: the one approved use of the system monospace. */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-100);
 }
 
 /* ---------- Buttons: one primary, one secondary, one text ---------- */
@@ -86,7 +106,12 @@
 }
 
 .btn:active {
-  transform: translateY(var(--shift-press));
+  transform: scale(var(--scale-press));
+}
+
+.btn svg {
+  width: var(--icon-md);
+  height: var(--icon-md);
 }
 
 .btn--block {
@@ -157,16 +182,22 @@
   }
 }
 
-/* ---------- Card: paper on the table ---------- */
+/* ---------- Card: paper on the table. Shadow in the light theme, a hairline in the dark one. ---------- */
 .card {
-  padding: var(--sp-5);
-  border: var(--hairline) solid var(--c-line);
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-card-edge);
   border-radius: var(--r-3);
   background-color: var(--c-surface-raised);
   box-shadow: var(--shadow-2);
 }
 
-/* ---------- Band: the dark tabletop ---------- */
+@media (min-width: 48em) {
+  .card {
+    padding: var(--sp-5);
+  }
+}
+
+/* ---------- Band: the dark felt ---------- */
 .band {
   background-color: var(--c-band);
   background-image: var(--grain);
@@ -205,15 +236,43 @@
   color: var(--c-on-band-muted);
 }
 
+/* ---------- One grid for every multi-column layout: 12 columns, one gap ---------- */
+.grid {
+  display: grid;
+  gap: var(--sp-6) var(--grid-gap);
+}
+
+@media (min-width: 64em) {
+  .grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .col-4 {
+    grid-column: span 4;
+  }
+
+  .col-5 {
+    grid-column: span 5;
+  }
+
+  .col-6 {
+    grid-column: span 6;
+  }
+
+  .col-7 {
+    grid-column: span 7;
+  }
+
+  .col-8 {
+    grid-column: span 8;
+  }
+}
+
 /* ---------- Footer ---------- */
 .site-footer {
   padding-block: var(--sp-8);
   padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom, 0));
-}
-
-.site-footer__inner {
-  display: grid;
-  gap: var(--sp-6);
 }
 
 .site-footer__brand {
@@ -229,22 +288,8 @@
   display: grid;
   gap: var(--sp-3);
   max-width: var(--measure);
-  padding-top: var(--sp-5);
-  border-top: var(--hairline) solid var(--c-band-line);
   font-size: var(--fs-100);
   color: var(--c-on-band-muted);
-}
-
-@media (min-width: 48em) {
-  .site-footer__inner {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    align-items: start;
-  }
-
-  .site-footer__legal {
-    padding-top: 0;
-    border-top: 0;
-  }
 }
 
 /* ---------- Windows high-contrast mode keeps button edges ---------- */

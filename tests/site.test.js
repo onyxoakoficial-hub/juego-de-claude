@@ -48,12 +48,79 @@ test('nothing is loaded from another website', () => {
   assert.deepStrictEqual(problems, []);
 });
 
-test('no cookies and no browser storage yet (progress saving arrives in a later milestone)', () => {
+test('only the progress store touches browser storage, and nothing else does', () => {
   const problems = [];
   for (const file of files.filter((f) => f.endsWith('.js') || f.endsWith('.html'))) {
-    const hit = read(file).match(/\b(?:localStorage|sessionStorage|indexedDB|document\.cookie)\b/);
-    if (hit) problems.push(`${rel(file)}: ${hit[0]}`);
+    const text = read(file);
+    const forbidden = text.match(/\b(?:sessionStorage|indexedDB|document\.cookie|caches\.open|serviceWorker)\b/);
+    if (forbidden) problems.push(`${rel(file)}: ${forbidden[0]}`);
+    if (/\blocalStorage\b/.test(text) && rel(file) !== path.join('js', 'engine.js')) problems.push(`${rel(file)}: localStorage outside js/engine.js`);
   }
+  assert.deepStrictEqual(problems, []);
+});
+
+test('every storage call in the engine is inside a try block', () => {
+  const code = read(path.join(SITE, 'js', 'engine.js')).replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const call of ['getItem', 'setItem', 'removeItem', 'root.localStorage']) {
+    let at = code.indexOf(call);
+    assert.ok(at !== -1, `${call} not found`);
+    while (at !== -1) {
+      const before = code.slice(0, at);
+      const lastTry = before.lastIndexOf('try {');
+      const lastCatch = before.lastIndexOf('} catch');
+      assert.ok(lastTry > lastCatch, `${call} at offset ${at} is outside a try block`);
+      at = code.indexOf(call, at + 1);
+    }
+  }
+});
+
+test('the chess pieces and icons are the same on every page', () => {
+  const symbols = (html) => {
+    const map = {};
+    for (const m of html.matchAll(/<symbol id="([^"]+)"[\s\S]*?<\/symbol>/g)) map[m[1]] = m[0];
+    return map;
+  };
+  const home = symbols(read(path.join(SITE, 'index.html')));
+  const play = symbols(read(path.join(SITE, 'play.html')));
+  assert.ok(Object.keys(home).length >= 11);
+  assert.deepStrictEqual(Object.keys(play).sort(), Object.keys(home).sort(), 'the two pages carry different sets of symbols');
+  for (const id of Object.keys(home)) assert.strictEqual(play[id], home[id], `symbol ${id} differs between pages`);
+});
+
+test('every icon uses the same 2px round stroke', () => {
+  const html = read(path.join(SITE, 'index.html'));
+  const icons = [...html.matchAll(/<symbol id="icon-[^"]+"[\s\S]*?<\/symbol>/g)].map((m) => m[0]);
+  assert.ok(icons.length >= 5);
+  for (const svg of icons) {
+    assert.match(svg, /stroke-width="2"/, svg.slice(0, 40));
+    assert.match(svg, /stroke-linecap="round"/, svg.slice(0, 40));
+  }
+});
+
+test('every <use> points to a symbol that exists, and every script and style file exists', () => {
+  const problems = [];
+  for (const page of pages) {
+    const html = read(page);
+    const ids = new Set([...html.matchAll(/<symbol id="([^"]+)"/g)].map((m) => m[1]));
+    for (const m of html.matchAll(/<use href="#([^"]+)"/g)) if (!ids.has(m[1])) problems.push(`${rel(page)}: <use #${m[1]}>`);
+    for (const m of html.matchAll(/(?:src|href)="((?!https?:|#|mailto:)[^"]+)"/g)) {
+      const target = m[1].split('#')[0];
+      if (target && !fs.existsSync(path.join(path.dirname(page), target))) problems.push(`${rel(page)}: missing ${m[1]}`);
+    }
+  }
+  assert.deepStrictEqual(problems, []);
+});
+
+test('no straight apostrophes or quotes in the visible text', () => {
+  const problems = [];
+  for (const page of pages) {
+    const html = read(page).slice(read(page).indexOf('<header'));
+    const text = html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '\n');
+    for (const line of text.split('\n')) if (/['"]/.test(line.trim())) problems.push(`${rel(page)}: ${line.trim().slice(0, 60)}`);
+  }
+  const content = read(path.join(SITE, 'content', 'en.js')).replace(/'(?:[^'\\\n]|\\.)*'/g, (m) => (/[\u2018-\u201D]/.test(m) ? m : m));
+  const values = JSON.stringify(globalThis.CHECKMATE.content);
+  if (/[a-z]'[a-z]/.test(values)) problems.push('content/en.js: straight apostrophe inside a word');
   assert.deepStrictEqual(problems, []);
 });
 
@@ -116,7 +183,7 @@ test('fonts ship with their licences', () => {
 test('size budget: under 100 KB of JavaScript, and a light first load', () => {
   const size = (filter) => files.filter(filter).reduce((sum, f) => sum + fs.statSync(f).size, 0);
   const js = size((f) => f.endsWith('.js'));
-  const landing = size((f) => /index\.html$|\.css$|\.js$|\.woff2$|grain\.png$|favicon\.svg$/.test(f));
+  const landing = size((f) => /index\.html$|\.css$|\.js$|\.woff2$|grain\.png$|favicon\.svg$/.test(f) && !/play\.(css|js)$/.test(f) && !/engine\.js$/.test(f));
   console.log(`JavaScript: ${(js / 1024).toFixed(1)} KB.  Landing page, everything it loads: ${(landing / 1024).toFixed(1)} KB (uncompressed).`);
   assert.ok(js < 100 * 1024, `JavaScript is ${js} bytes`);
   assert.ok(landing < 1024 * 1024, `landing page is ${landing} bytes`);
