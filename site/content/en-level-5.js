@@ -37,6 +37,7 @@
     { when: { empty: true }, outcome: 'empty' },
     { when: { all: [REMOVE, '$target'] }, outcome: 'good' },
     { when: { all: ['$target'], none: [REMOVE] }, outcome: 'needAction' },
+    { when: { all: [REMOVE, ['1', '2', '3', 'one', 'two', 'three', 'first', 'second', 'third', 'heading']] }, outcome: 'wrongStep' },
     { when: { all: [REMOVE] }, outcome: 'needTarget' },
     { when: {}, outcome: 'notUnderstood' }
   ];
@@ -44,6 +45,7 @@
   var editCommon = {
     empty: { type: 'hint', reply: 'Type what you want to change in the plan. A hint can help.' },
     needAction: { type: 'hint', reply: 'What should I do with that step? Type it, for example “remove”.' },
+    wrongStep: { type: 'hint', reply: 'That step is part of what you asked for. Try naming the step that is more than you asked for.' },
     needTarget: { type: 'hint', reply: 'I am not sure which step you mean. Type the step you do not want, by its number or by what it is.' },
     notUnderstood: { type: 'hint', reply: 'I did not understand that. Try something like “Remove step 2”.' }
   };
@@ -119,6 +121,7 @@
         board: seed,
         variants: [{}],
         hints: ['Say what you want planned. It needs an action and a thing.', 'For example: “Plan a schedule page”.'],
+        example: 'Plan a schedule page.',
         rules: planRequestRules,
         outcomes: Object.assign({}, planRequestCommon, {
           good: {
@@ -144,6 +147,7 @@
             kind: 'type',
             plan: schedulePlan,
             prompt: 'Tell the assistant what to change in the plan.',
+            example: 'Remove step 4.',
             rules: editRules,
             outcomes: Object.assign({}, editCommon, {
               good: {
@@ -204,6 +208,7 @@
           {
             kind: 'type',
             prompt: 'Ask for a {job}. Type it in your own words.',
+            example: 'Plan a {job}.',
             rules: planRequestRules,
             outcomes: Object.assign({}, planRequestCommon, {
               good: {
@@ -218,6 +223,7 @@
             kind: 'type',
             plan: { title: 'Plan: a {job}', items: ['Create {file}', 'Add a heading that says {heading}', '{third}', '{fourth}'] },
             prompt: 'Tell the assistant what to change in the plan.',
+            example: 'Remove the {extra}.',
             rules: editRules,
             outcomes: Object.assign({}, editCommon, {
               good: {

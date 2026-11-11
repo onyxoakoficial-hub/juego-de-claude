@@ -57,6 +57,9 @@
           change: ['make', 'change', 'turn', 'set', 'paint', 'color', 'colour', 'improve', 'better', 'nicer', 'nice', 'fix', 'update']
         },
         categories: kit.rulebookCategories,
+        concrete: kit.rulebookConcrete,
+        sizeScale: kit.sizeScale,
+        showKinds: true,
 
         plans: {
           create: {
@@ -73,7 +76,9 @@
         messages: {
           empty: 'Type your instruction first.',
           planNoEdit: 'Plan mode makes no edits. In this mode I can only plan. Switch the mode if you want me to change a file.',
-          vagueRule: 'Rule {line} is too vague: “{text}”. A rule must say what to change and how.',
+          vagueRule: 'Rule {line} is too vague: “{text}”. A rule must say what to change and how. If it already says that, this practice game may not know it yet. It understands a color, a size, a text and a footer.',
+          unsupportedRule: 'Rule {line}, “{text}”: that is a good rule, but this practice game can’t apply it yet. Try a color, a size, a text, or a footer.',
+          unsupported: 'That is a good request, but this practice game can’t do it yet. Try a color, a size, a text, or a footer.',
           createRulebook: 'I will create CLAUDE.md with your rules. I will read it before I make anything.',
           updateRulebook: 'I will add your rules to CLAUDE.md. I will read it before I make anything.',
           askCreateRulebook: 'May I create CLAUDE.md?',

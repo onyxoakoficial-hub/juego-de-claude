@@ -1033,3 +1033,38 @@
   display: grid;
   gap: var(--sp-2);
 }
+
+/* ---------- What the practice game understands, and the way out after three misses ---------- */
+.kinds {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--hairline) solid var(--c-line);
+  border-radius: var(--r-2);
+}
+
+.kinds__list {
+  display: grid;
+  gap: var(--sp-1);
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-100);
+}
+
+.hint__text {
+  white-space: pre-line;
+}
+
+.stuck {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+}
+
+.stuck__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}

@@ -77,6 +77,20 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
   a completion card the learner can download as a picture, copy as text or share, and the checklist
   "Your first real session".
 - A step may set the board it starts from (`board`), so a level can resume in the middle.
+- Honest errors (bug found by a learner in level 3): a line that is not a rule the game can apply is
+  either `vague` (names no part of the page, or no exact value) or `unsupported` (a clear rule such as
+  "Links are purple" that the practice game cannot apply). The message never calls a clear rule vague. The
+  detector is `isConcrete` in `js/engine.js`, fed by `kit.rulebookConcrete` in `content/en.js`.
+- Heading size accepts words (big, small, huge...) and numbers (`48px`, `3em`, `36pt`, `150%`, or `48`).
+  The practice page shows three sizes: up to 24px is small, from 40px is large, the rest is normal
+  (`kit.sizeScale`). The rule line is kept as the learner wrote it.
+- The rule-writing steps (level 3, and level 6) list the kinds of rule the game understands before the
+  learner writes (`showKinds`), with accepted words and no sentence to copy.
+- After 3 misses in a row a way out appears: a complete example (`example` on every typed step and typed
+  request; in a check it counts as a hint) and, in a check, "restart with new words" (the next variant,
+  no hint counted). Level 6 has no example: it only offers "start this level again".
+- `tests/rules-bank.test.js` holds at least 20 wordings per kind of typed answer. When a learner finds a
+  wording that fails, add it there first, then fix the engine.
 
 ## Game rules
 

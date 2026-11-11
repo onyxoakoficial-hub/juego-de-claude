@@ -300,7 +300,8 @@
     'preview-label', 'preview-note', 'preview-bar', 'preview-empty', 'preview-page', 'preview-site',
     'preview-heading', 'preview-footer', 'preview-text', 'compare', 'compare-label', 'compare-before', 'compare-after',
     'plan', 'plan-title', 'plan-list', 'ask-change', 'capstone', 'goals-label', 'goals-list', 'goals-progress', 'mode-label',
-    'mode-chips', 'recap-done'
+    'mode-chips', 'recap-done', 'kinds', 'kinds-label', 'kinds-list', 'stuck', 'stuck-title', 'stuck-text', 'stuck-example',
+    'stuck-restart'
   ].forEach(function (name) {
     el[name] = $('[data-' + name + ']', page.levelView);
   });
@@ -357,6 +358,8 @@
       repeats: 0,
       selection: {},
       hints: 0,
+      examples: 0,
+      misses: 0,
       effects: [],
       pending: null,
       eventIndex: 0,
@@ -491,13 +494,15 @@
   /* ---------- A step ---------- */
 
   function resetStepParts() {
-    [el.hint, el.reply, el.ask, el.verdict, el.question, el.recap, el.build, el.type, el['review-line'], el.plan, el.capstone].forEach(function (node) {
+    [el.hint, el.reply, el.ask, el.verdict, el.question, el.recap, el.build, el.type, el['review-line'], el.plan, el.capstone, el.stuck, el.kinds].forEach(function (node) {
       show(node, false);
     });
     put(el['reply-text'], '');
     put(el['question-feedback'], '');
     session.selection = {};
     session.hints = 0;
+    session.examples = 0;
+    session.misses = 0;
     session.pending = null;
     session.eventIndex = 0;
     session.cap = null;
@@ -618,7 +623,23 @@
     show(el.actions, true);
     put(el.announce, current.announceLabel || U.announce);
     showTypeBox(rules ? U.rulesLabel : U.typeLabel, rules ? U.rulesHelp : U.typeHelp, current.rows || 2);
+    renderKinds(current);
     renderHintButton();
+  }
+
+  /* What the practice game understands, before the learner writes. Names and accepted words only, no sentences. */
+  function renderKinds(current) {
+    var kinds = current.showKinds ? app.kit.rulebookKinds : null;
+    show(el.kinds, Boolean(kinds));
+    if (!kinds) return;
+    put(el['kinds-label'], U.kindsLabel);
+    el['kinds-list'].textContent = '';
+    kinds.forEach(function (kind) {
+      var item = make('li', 'kinds__item');
+      item.appendChild(make('strong', '', kind.name + ': '));
+      item.appendChild(document.createTextNode(kind.says));
+      el['kinds-list'].appendChild(item);
+    });
   }
 
   function lockInput(locked) {
@@ -649,6 +670,7 @@
   function showHint() {
     var hints = step().hints || [];
     if (session.hints >= hints.length) return;
+    put(el['hint-label'], U.hintLabel);
     put(el['hint-text'], hints[session.hints]);
     put(el['hint-note'], step().check ? U.hintCheckNote : '');
     show(el['hint-note'], Boolean(step().check));
@@ -656,6 +678,63 @@
     show(el.hint, true);
     announceLive(hints[session.hints - 1]);
     renderHintButton();
+  }
+
+  /* ---------- Three misses in a row: a way out ---------- */
+
+  function hit() {
+    session.misses = 0;
+    show(el.stuck, false);
+  }
+
+  function miss() {
+    session.misses += 1;
+    if (session.misses >= 3) showStuck();
+  }
+
+  /* A complete answer for what the learner is doing now, with this variant's words, or ''. */
+  function exampleText() {
+    var current = step();
+    if (current.kind === 'capstone') return '';
+    var active = activeStep();
+    return active && active.example ? E.fill(active.example, variant()) : '';
+  }
+
+  function showStuck() {
+    var current = step();
+    var final = current.kind === 'capstone';
+    var example = exampleText();
+    var restart = Boolean(current.check);
+    show(el['stuck-example'], Boolean(example));
+    show(el['stuck-restart'], restart);
+    if (!example && !restart) {
+      show(el.stuck, false);
+      return;
+    }
+    put(el['stuck-title'], U.stuckTitle);
+    put(el['stuck-text'], final ? U.stuckTextFinal : restart ? (example ? U.stuckTextCheck : U.stuckTextRestart) : U.stuckTextStep);
+    put(el['stuck-example'], U.stuckExample);
+    put(el['stuck-restart'], final ? U.stuckRestartFinal : U.stuckRestart);
+    show(el.stuck, true);
+    reveal(el.stuck);
+  }
+
+  function showExample() {
+    var example = exampleText();
+    if (!example) return;
+    session.examples += 1;
+    put(el['hint-label'], U.exampleLabel);
+    put(el['hint-text'], example);
+    put(el['hint-note'], step().check ? U.exampleCheckNote : '');
+    show(el['hint-note'], Boolean(step().check));
+    show(el.hint, true);
+    announceLive(U.exampleLabel + '. ' + example);
+    reveal(el.hint);
+  }
+
+  function restartCheck() {
+    session.repeats += 1;
+    renderStep(false);
   }
 
   /* The thing the learner is answering right now: the step, or the current request of a review. */
@@ -679,6 +758,7 @@
     if (res.plan) showPlan(res.plan);
 
     if (res.type === 'ask') {
+      hit();
       session.pending = res;
       say(res.reply, 'ask');
       showAsk(res.ask);
@@ -688,11 +768,13 @@
       return;
     }
     if (res.type === 'done' || res.type === 'plan') {
+      hit();
       say(res.reply, 'done');
       completeMove(res);
       return;
     }
     say(res.reply, 'hint');
+    miss();
   }
 
   /* ---------- The plan card ---------- */
@@ -787,7 +869,7 @@
 
   function finishStep(verdictText) {
     var current = step();
-    var repeat = current.check && E.checkResult(session.hints) === 'repeat';
+    var repeat = current.check && E.checkResult(session.hints + session.examples) === 'repeat';
     var next = session.level.steps[session.index + 1];
     var toQuestion = next && next.kind === 'question';
     show(el.actions, false);
@@ -862,8 +944,10 @@
     var res = E.reviewAnswer(event, choice);
     if (!res.right) {
       say(res.reply, 'hint');
+      miss();
       return;
     }
+    hit();
     show(el.ask, false);
     say(res.reply, 'done');
     applyEffects(res.effects);
@@ -1042,6 +1126,7 @@
     show(el['hint-button'], false);
     put(el.announce, U.announce);
     showTypeBox(U.typeLabel, U.captureHelp, 2);
+    renderKinds(current);
   }
 
   function capAnnounce() {
@@ -1060,8 +1145,10 @@
 
     if (move.type === 'hint') {
       say(move.reply, 'hint');
+      miss();
       return;
     }
+    hit();
     if (move.type === 'done') {
       applyEffects(move.effects);
       cap.log.push({ goals: move.goals });
@@ -1158,6 +1245,8 @@
 
   el.announce.addEventListener('click', announceMove);
   el['hint-button'].addEventListener('click', showHint);
+  el['stuck-example'].addEventListener('click', showExample);
+  el['stuck-restart'].addEventListener('click', restartCheck);
   el.yes.addEventListener('click', approve);
   el.no.addEventListener('click', deny);
   el['compare-before'].addEventListener('click', function () {

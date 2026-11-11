@@ -57,7 +57,7 @@ test('the level list agrees with the level data: file, step count, and the files
   }
 });
 
-const CAPSTONE_HINT_MESSAGES = ['empty', 'planNoEdit', 'vagueRule', 'nothingToUndo', 'pageExists', 'noPageYet', 'badCombo', 'needHow', 'needPart', 'vague', 'notUnderstood'];
+const CAPSTONE_HINT_MESSAGES = ['empty', 'planNoEdit', 'vagueRule', 'unsupportedRule', 'unsupported', 'nothingToUndo', 'pageExists', 'noPageYet', 'badCombo', 'needHow', 'needPart', 'vague', 'notUnderstood'];
 const CAPSTONE_KEYS = [...CAPSTONE_HINT_MESSAGES, 'createRulebook', 'updateRulebook', 'askCreateRulebook', 'askUpdateRulebook', 'savedRulebook', 'noRulebook', 'undone', 'createPage', 'askCreatePage', 'createdPage', 'noPage', 'changeReply', 'askChange', 'changedPage', 'noChange', 'whatTitleColor', 'whatTitleSize', 'whatBackground', 'whatFooter', 'partTitle', 'partBackground', 'planReply', 'approvePlan', 'approveYes', 'approveNo', 'planApproved', 'planDiscarded', 'unwantedReply', 'unwantedAsk', 'unwantedYes', 'unwantedNo'];
 
 for (const n of built) {
@@ -249,8 +249,10 @@ test('level 6: no hints anywhere, and every error says what kind of thing to try
     const text = step.messages[key];
     assert.match(text, /\b(?:say|type|tell|name|switch|try|think|ask|read|make)\b/i, `${key} does not say what to try`);
     assert.ok(!/\bincorrect\b|\bwrong\b/i.test(text), `${key} just says wrong`);
+    /* The one sentence that names the kinds of rule the game understands is allowed (owner decision, bug in level 3). */
+    const body = text.split('It understands a color, a size, a text and a footer.').join('').split('Try a color, a size, a text, or a footer.').join('');
     for (const giveaway of ['green', 'blue', 'footer', 'CLAUDE.md', 'Plan mode', '/rewind', 'undo that', 'take that back']) {
-      assert.ok(!text.toLowerCase().includes(giveaway.toLowerCase()) || key === 'planNoEdit', `${key} gives away "${giveaway}"`);
+      assert.ok(!body.toLowerCase().includes(giveaway.toLowerCase()) || key === 'planNoEdit', `${key} gives away "${giveaway}"`);
     }
   }
 });

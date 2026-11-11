@@ -14,9 +14,9 @@
   if (!E) return;
 
   var COLORS = { green: 'green', blue: 'blue', red: 'red', black: 'ink', white: 'paper' };
-  var SIZES = { big: 'large', bigger: 'large', large: 'large', larger: 'large', huge: 'large', small: 'small', smaller: 'small' };
+  var SIZES = { big: 'large', bigger: 'large', biggest: 'large', large: 'large', larger: 'large', largest: 'large', huge: 'large', giant: 'large', small: 'small', smaller: 'small', smallest: 'small', tiny: 'small', little: 'small', normal: 'normal', medium: 'normal' };
   var COLOR_NAMES = { green: 'green', blue: 'blue', red: 'red', ink: 'black', paper: 'white' };
-  var SIZE_NAMES = { large: 'bigger', small: 'smaller' };
+  var SIZE_NAMES = { large: 'bigger', small: 'smaller', normal: 'normal' };
 
   function hint(reply) {
     return { type: 'hint', reply: reply };
@@ -113,8 +113,11 @@
           bad = { line: 1, text: line };
         }
       });
-      if (bad) return hint(E.fill(m.vagueRule, bad));
-      if (!found.length) return hint(E.fill(m.vagueRule, { line: 1, text: lines[0] || '' }));
+      if (bad) return hint(E.fill(E.isConcrete(step, bad.text) ? m.unsupportedRule : m.vagueRule, bad));
+      if (!found.length) {
+        var first = lines[0] || '';
+        return hint(E.fill(E.isConcrete(step, first) ? m.unsupportedRule : m.vagueRule, { line: 1, text: first }));
+      }
 
       var byTopic = {};
       (ctx.rules || []).concat(found).forEach(function (rule) {
@@ -148,7 +151,9 @@
     var asksForPage = E.hasAny(list, w.act) && E.hasAny(list, w.page);
     var part = E.hasAny(list, w.head) ? 'title' : E.hasAny(list, ['background', 'backgrounds']) ? 'background' : E.hasAny(list, ['footer', 'footers']) ? 'footer' : null;
     var color = pick(list, COLORS);
-    var size = pick(list, SIZES);
+    /* "Make the page blue" changes the page that is already there: its background. */
+    if (!part && color && ctx.hasPage && E.hasAny(list, ['page', 'site', 'website', 'body'])) part = 'background';
+    var size = pick(list, SIZES) || E.sizeFrom(input, step.sizeScale);
 
     /* --- Make the page --- */
     if (asksForPage && (!part || !ctx.hasPage)) {
@@ -174,6 +179,12 @@
       var cat = { text: step.footerDefault };
       var text = E.ruleValue(cat, input);
       changes = { key: 'footer', set: { footer: text }, what: m.whatFooter };
+    }
+
+    /* A clear request the game cannot do, such as "make the title bold": say so, do not ask for more detail. */
+    if (!changes && !(part === 'background' && size)) {
+      var namesOther = step.concrete && E.hasAny(list, step.concrete.others || []);
+      if (E.isConcrete(step, input) || namesOther) return hint(m.unsupported);
     }
 
     var looksLikeChange = part || color || size || E.hasAny(list, w.change);

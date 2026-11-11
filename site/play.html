@@ -188,6 +188,10 @@
               <label class="label label--muted" for="lv-input" data-type-label></label>
               <textarea class="field" id="lv-input" data-input rows="2" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
               <p class="fine" data-type-help></p>
+              <div class="kinds" data-kinds hidden>
+                <p class="label label--muted" id="lv-kinds-label" data-kinds-label></p>
+                <ul class="kinds__list" aria-labelledby="lv-kinds-label" data-kinds-list></ul>
+              </div>
             </div>
 
             <div class="stage__actions" data-actions>
@@ -197,13 +201,22 @@
 
             <div class="hint" data-hint role="group" aria-labelledby="lv-hint-label" hidden>
               <span class="label label--muted" id="lv-hint-label" data-hint-label></span>
-              <p data-hint-text></p>
+              <p class="hint__text" data-hint-text></p>
               <p class="hint__note" data-hint-note></p>
             </div>
 
             <div class="reply" data-reply hidden>
               <span class="label label--muted" data-reply-who></span>
               <p class="reply__text" data-reply-text></p>
+            </div>
+
+            <div class="stuck" data-stuck role="group" aria-labelledby="lv-stuck-title" hidden>
+              <p class="label" id="lv-stuck-title" data-stuck-title></p>
+              <p data-stuck-text></p>
+              <div class="stuck__buttons">
+                <button type="button" class="btn btn--secondary" data-stuck-example></button>
+                <button type="button" class="btn btn--secondary" data-stuck-restart></button>
+              </div>
             </div>
 
             <div class="plan" data-plan hidden>

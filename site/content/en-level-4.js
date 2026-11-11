@@ -79,8 +79,10 @@
         board: seedClub,
         variants: [{}],
         hints: ['Say which part of the page, and which color.', 'For example: “Make the title green”.'],
+        example: 'Make the title green.',
         rules: [
           { when: { empty: true }, outcome: 'empty' },
+          { when: { all: [HEAD, ['blue', 'red', 'black', 'white', 'purple', 'yellow', 'orange', 'pink', 'brown', 'gray', 'grey']], none: [['green']] }, outcome: 'otherColor' },
           { when: { all: [HEAD], none: [['green']] }, outcome: 'needColor' },
           { when: { all: [['green']], none: [HEAD, ['background']] }, outcome: 'needPart' },
           { when: { all: [HEAD, ['green']] }, outcome: 'good' },
@@ -89,6 +91,7 @@
         outcomes: {
           empty: { type: 'hint', reply: 'Type your instruction first. A hint can help.' },
           needColor: { type: 'hint', reply: 'Which color? Type the color you want, like “green”.' },
+          otherColor: { type: 'hint', reply: 'That is a clear instruction, but this step asks for a green title. Type it with the color green.' },
           needPart: { type: 'hint', reply: 'Green for which part of the page? Type “the title”.' },
           notUnderstood: { type: 'hint', reply: 'I did not understand that. Try something like “Make the title green”.' },
           good: {
@@ -130,6 +133,7 @@
         board: [{ kind: 'page', file: 'index.html', text: 'Chess Club' }, greenTitle],
         variants: [{}],
         hints: ['Say you want to go back. Which words mean that?', 'For example: “undo that” or “take that back”.'],
+        example: 'Undo that.',
         rules: undoRules,
         outcomes: Object.assign({}, undoCommon, {
           good: {
@@ -174,6 +178,7 @@
           {
             kind: 'type',
             prompt: 'Now take the color change back. Type it in your own words.',
+            example: 'Undo that.',
             rules: undoRules,
             outcomes: Object.assign({}, undoCommon, {
               good: {

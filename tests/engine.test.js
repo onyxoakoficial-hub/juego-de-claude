@@ -449,7 +449,8 @@ test('level 5: the learner can change the plan in their own words', () => {
     assert.ok(!result.plan.items.join(' ').includes('gallery'), 'the unwanted step is gone');
   }
   assert.strictEqual(edit('the gallery').outcome, 'needAction');
-  assert.strictEqual(edit('remove step 2').outcome, 'needTarget');
+  assert.strictEqual(edit('remove step 2').outcome, 'wrongStep');
+  assert.strictEqual(edit('remove the table').outcome, 'needTarget');
   assert.strictEqual(edit('looks good').outcome, 'notUnderstood');
   assert.strictEqual(edit('').outcome, 'empty');
 });
@@ -475,7 +476,7 @@ test('level 5 check: each variant has its own plan, its own unwanted step and it
     const unwanted = E.announce(edit, variant, `remove the ${variant.extra}`, { rules: [] });
     assert.strictEqual(unwanted.outcome, 'good', variant.job);
     assert.strictEqual(unwanted.plan.items.length, 3);
-    assert.strictEqual(E.announce(edit, variant, 'remove step 2', { rules: [] }).outcome, 'needTarget');
+    assert.strictEqual(E.announce(edit, variant, 'remove step 2', { rules: [] }).outcome, 'wrongStep');
     assert.strictEqual(approve.correct, 'yes');
     assert.strictEqual(E.reviewAnswer(create, 'yes').effects[0].file, variant.file);
     assert.strictEqual(E.reviewEvent(l5check, variant, 4), null);

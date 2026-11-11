@@ -106,6 +106,7 @@
   function normalize(text) {
     return String(text === undefined || text === null ? '' : text)
       .toLowerCase()
+      .replace(/(\w)['’](\w)/g, '$1$2')
       .replace(/[‘’“”"']/g, ' ')
       .replace(/[^a-z0-9\/\s]/g, ' ')
       .replace(/\s+/g, ' ')
@@ -167,10 +168,17 @@
   function textMatches(when, text, variant) {
     var list = words(text);
     if (when && when.empty) return list.length === 0;
+    /* "or": any one of several conditions is enough. */
+    if (when && when.or) {
+      for (var k = 0; k < when.or.length; k += 1) if (textMatches(when.or[k], text, variant)) return true;
+      return false;
+    }
     var all = (when && when.all) || [];
     var none = (when && when.none) || [];
     for (var i = 0; i < all.length; i += 1) if (!hasAny(list, wordList(all[i], variant))) return false;
     for (var j = 0; j < none.length; j += 1) if (hasAny(list, wordList(none[j], variant))) return false;
+    /* "pattern": the raw text must also match this regular expression (for example, a number). */
+    if (when && when.pattern && !new RegExp(when.pattern, 'i').test(String(text))) return false;
     return true;
   }
 
@@ -187,7 +195,7 @@
   function splitLines(text) {
     return String(text === undefined || text === null ? '' : text)
       .split(/\n|;/)
-      .map(function (line) { return line.replace(/^[\s\-\*•\d.)]+/, '').trim(); })
+      .map(function (line) { return line.replace(/^\s*(?:[-*•]+|\d+[.)])\s*/, '').trim(); })
       .filter(Boolean);
   }
 
@@ -209,6 +217,46 @@
     return null;
   }
 
+  /*
+    A size written as a number: "48px", "3em", "36 pt", "150%", or just "48".
+    Returns 'small', 'normal' or 'large' (the practice page shows three sizes), or null if there is no number.
+    scale: { base, small, large } in pixels. Up to "small" is small, from "large" up is large.
+  */
+  var PIXELS = { px: 1, pixel: 1, pixels: 1, pt: 4 / 3, point: 4 / 3, points: 4 / 3, em: 16, rem: 16 };
+
+  function sizeFrom(text, scale) {
+    if (!scale) return null;
+    var raw = String(text === undefined || text === null ? '' : text);
+    var withUnit = /(\d+(?:\.\d+)?)\s*(px|pixels?|pt|points?|rem|em|%)(?![a-z])/i.exec(raw);
+    var px = null;
+    if (withUnit) {
+      var unit = withUnit[2].toLowerCase();
+      px = unit === '%' ? (parseFloat(withUnit[1]) / 100) * scale.base : parseFloat(withUnit[1]) * PIXELS[unit];
+    } else {
+      var bare = /(?:^|[^\w.])(\d+(?:\.\d+)?)(?![\w)])/.exec(raw);
+      if (bare) px = parseFloat(bare[1]);
+    }
+    if (px === null || isNaN(px)) return null;
+    if (px <= scale.small) return 'small';
+    if (px >= scale.large) return 'large';
+    return 'normal';
+  }
+
+  /*
+    A line that is not a rule this game can apply: is it a clear rule anyway?
+    step.concrete = { parts: [...], values: [...], pattern }. A line is clear when it names a part of the page
+    and a value for it (a word like "bold" or "purple", a number, a quote). Then the game says it cannot
+    apply it yet. If not, the line is too vague.
+  */
+  function isConcrete(step, line) {
+    var c = step && step.concrete;
+    if (!c) return false;
+    var list = words(line);
+    if (!hasAny(list, c.parts)) return false;
+    if (c.pattern && new RegExp(c.pattern, 'i').test(String(line))) return true;
+    return hasAny(list, c.values);
+  }
+
   function ruleValue(cat, line) {
     if (cat.values) {
       var list = words(line);
@@ -226,6 +274,11 @@
       }
       var found = firstValue(list, cat.values);
       if (found !== null) return found;
+    }
+    /* No size word: a number says the size. */
+    if (cat.scale) {
+      var bucket = sizeFrom(line, cat.scale);
+      if (bucket !== null) return bucket;
     }
     if (cat.text) {
       var quoted = /[“"]([^“”"]{2,60})[”"]/.exec(line);
@@ -246,7 +299,14 @@
     var covered = {};
     for (var i = 0; i < lines.length; i += 1) {
       var cat = classifyLine(step, lines[i]);
-      if (!cat) return { outcome: 'vague', lines: lines, rules: rules, vars: { line: i + 1, text: lines[i] } };
+      if (!cat) {
+        return {
+          outcome: isConcrete(step, lines[i]) ? 'unsupported' : 'vague',
+          lines: lines,
+          rules: rules,
+          vars: { line: i + 1, text: lines[i] }
+        };
+      }
       rules.push({ cat: cat.id, value: ruleValue(cat, lines[i]) });
       covered[cat.id] = true;
     }
@@ -553,6 +613,8 @@
     textMatches: textMatches,
     evaluateText: evaluateText,
     readRulebook: readRulebook,
+    sizeFrom: sizeFrom,
+    isConcrete: isConcrete,
     words: words,
     hasAny: hasAny,
     splitLines: splitLines,

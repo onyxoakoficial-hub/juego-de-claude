@@ -11,6 +11,7 @@
   var typePageCommon = kit.typePageCommon;
   var rulebookCategories = kit.rulebookCategories;
   var rulebookCommon = kit.rulebookCommon;
+  var concrete = kit.rulebookConcrete;
 
 
   app.content.levels[3] = {
@@ -26,6 +27,7 @@
         board: [],
         variants: [{}],
         hints: ['Say what you want made. Which two things does a good instruction need?', 'For example: “Make a web page”.'],
+        example: 'Make a web page.',
         rules: typePageRules,
         outcomes: Object.assign({}, typePageCommon, {
           good: {
@@ -49,6 +51,9 @@
         variants: [{}],
         need: [],
         categories: rulebookCategories,
+        concrete: concrete,
+        showKinds: true,
+        example: 'Headings are green.',
         hints: ['Think of one thing you want on every page. A color is an easy start.', 'For example: “Headings are green.”'],
         outcomes: Object.assign({}, rulebookCommon, {
           good: {
@@ -73,6 +78,7 @@
         ],
         variants: [{}],
         hints: ['Ask for a page like before.', 'For example: “Make a web page”.'],
+        example: 'Make a web page.',
         rules: typePageRules,
         outcomes: Object.assign({}, typePageCommon, {
           good: {
@@ -95,11 +101,14 @@
         board: [],
         rows: 4,
         variants: [
-          { need: ['color', 'footer', 'background'], topics: 'the heading color, a footer line and the page background' },
-          { need: ['footer', 'background', 'size'], topics: 'a footer line, the page background and the heading size' },
-          { need: ['color', 'size', 'footer'], topics: 'the heading color, the heading size and a footer line' }
+          { need: ['color', 'footer', 'background'], topics: 'the heading color, a footer line and the page background', example: 'Headings are green.\nThe background is blue.\nAdd a footer that says Made by the club.' },
+          { need: ['footer', 'background', 'size'], topics: 'a footer line, the page background and the heading size', example: 'Add a footer that says Made by the club.\nThe background is blue.\nHeadings are 48px.' },
+          { need: ['color', 'size', 'footer'], topics: 'the heading color, the heading size and a footer line', example: 'Headings are green.\nHeadings are big.\nAdd a footer that says Made by the club.' }
         ],
         categories: rulebookCategories,
+        concrete: concrete,
+        showKinds: true,
+        example: '{example}',
         hints: ['One rule on each line. Each rule is about one topic from the task.', 'For example: “Headings are green.” “The background is blue.” “Add a footer that says Made by the club.”'],
         outcomes: Object.assign({}, rulebookCommon, {
           good: {

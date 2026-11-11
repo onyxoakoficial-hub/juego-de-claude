@@ -20,8 +20,8 @@
   /* Level 3 and 4: typed answers. Words the game listens for. */
   var ACT = ['make', 'create', 'build', 'write', 'add', 'generate'];
   var PAGE = ['page', 'website', 'webpage', 'site', 'html'];
-  var HEAD = ['heading', 'headings', 'title', 'titles', 'header', 'headers'];
-  var UNDO = ['undo', 'revert', 'rewind', '/rewind', 'back', 'reverse', 'restore'];
+  var HEAD = ['heading', 'headings', 'title', 'titles', 'header', 'headers', 'headline', 'headlines', 'h1'];
+  var UNDO = ['undo', 'revert', 'rewind', '/rewind', 'back', 'reverse', 'restore', 'cancel', 'reset', 'rollback', 'unmake'];
 
   var typePageRules = [
     { when: { empty: true }, outcome: 'empty' },
@@ -38,12 +38,24 @@
     notUnderstood: { type: 'hint', reply: 'I did not understand that. Try something like “Make a web page”.' }
   };
 
+  /* How big the practice page can show a heading, in pixels: up to "small" is small, from "large" up is large. */
+  var sizeScale = { base: 32, small: 24, large: 40 };
+
+  var COLOR_WORDS = ['green', 'blue', 'red', 'black', 'white'];
+  var PAGE_WORDS = ['page', 'pages', 'site', 'website', 'body'];
+  var OTHER_PARTS = ['text', 'texts', 'font', 'fonts', 'link', 'links', 'button', 'buttons', 'paragraph', 'paragraphs', 'border', 'borders', 'menu', 'image', 'images'];
+
   var rulebookCategories = [
     {
       id: 'background',
       topic: 'the page background',
-      when: { all: [['background', 'backgrounds'], ['green', 'blue', 'red', 'white']] },
-      after: ['background', 'backgrounds'],
+      when: {
+        or: [
+          { all: [['background', 'backgrounds'], COLOR_WORDS.slice(0, 3).concat(['white'])] },
+          { all: [PAGE_WORDS, COLOR_WORDS.slice(0, 3).concat(['white'])], none: [HEAD, OTHER_PARTS, ['footer', 'footers']] }
+        ]
+      },
+      after: ['background', 'backgrounds'].concat(PAGE_WORDS),
       values: { green: 'green', blue: 'blue', red: 'red', white: 'paper' }
     },
     {
@@ -56,16 +68,53 @@
     {
       id: 'size',
       topic: 'the heading size',
-      when: { all: [['big', 'bigger', 'large', 'larger', 'huge', 'small', 'smaller']] },
-      values: { big: 'large', bigger: 'large', large: 'large', larger: 'large', huge: 'large', small: 'small', smaller: 'small' }
+      scale: sizeScale,
+      when: {
+        or: [
+          { all: [['big', 'bigger', 'biggest', 'large', 'larger', 'largest', 'huge', 'giant', 'small', 'smaller', 'smallest', 'tiny', 'little', 'normal', 'medium']] },
+          { all: [HEAD], pattern: '\\d' }
+        ]
+      },
+      values: {
+        big: 'large', bigger: 'large', biggest: 'large', large: 'large', larger: 'large', largest: 'large', huge: 'large', giant: 'large',
+        small: 'small', smaller: 'small', smallest: 'small', tiny: 'small', little: 'small', normal: 'normal', medium: 'normal'
+      }
     }
+  ];
+
+  /*
+    A rule the game cannot apply can still be a clear rule. A line is clear when it names a part of the page
+    and says something exact about it (a word like "bold" or "purple", a number, a quote).
+    Then the game says it is a good rule that this practice game cannot apply yet. Otherwise it is too vague.
+  */
+  var rulebookConcrete = {
+    parts: HEAD.concat(PAGE_WORDS, OTHER_PARTS, ['logo', 'photo', 'photos', 'margin', 'margins', 'padding', 'width', 'spacing', 'list', 'table', 'section', 'navigation', 'nav', 'background', 'backgrounds']),
+    values: COLOR_WORDS.concat(
+      ['purple', 'yellow', 'orange', 'pink', 'brown', 'gray', 'grey', 'gold', 'teal', 'navy', 'violet', 'cyan', 'magenta', 'silver', 'lime', 'beige', 'turquoise'],
+      ['bold', 'italic', 'underline', 'underlined', 'center', 'centered', 'centre', 'centred', 'left', 'right', 'uppercase', 'lowercase', 'capital', 'serif', 'sans', 'monospace', 'arial', 'georgia', 'helvetica', 'times', 'roboto', 'rounded', 'shadow', 'wide', 'narrow', 'dark', 'transparent', 'hidden', 'sticky']
+    ),
+    pattern: '\\d|[“”"]|#[0-9a-f]{3,6}\\b',
+    /* Things a page can have that this game cannot make. Asking for one is a clear request the game cannot do. */
+    others: OTHER_PARTS.concat(['logo', 'photo', 'photos', 'table', 'list', 'section', 'navigation', 'nav'])
+  };
+
+  /* What the rule-writing steps tell the learner this game understands (no example sentences). */
+  var rulebookKinds = [
+    { name: 'Heading color', says: 'green, blue, red or black' },
+    { name: 'Page background', says: 'green, blue, red or white' },
+    { name: 'Heading size', says: 'big, small, or a number like 48px (the practice page shows three sizes)' },
+    { name: 'A footer line', says: 'a short text, such as the words after “says”' }
   ];
 
   var rulebookCommon = {
     empty: { type: 'hint', reply: 'Write at least one rule first. A hint can help.' },
     vague: {
       type: 'hint',
-      reply: 'Rule {line} is too vague: “{text}”. A rule must say what to change and how. For example: “Headings are green.”'
+      reply: 'Rule {line} is too vague: “{text}”. A rule must say what to change and how. If it already says that, this practice game may not know it yet. It understands a color, a size, a text and a footer.'
+    },
+    unsupported: {
+      type: 'hint',
+      reply: 'Rule {line}, “{text}”: that is a good rule, but this practice game can’t apply it yet. Try a color, a size, a text, or a footer.'
     },
     missing: { type: 'hint', reply: 'I cannot find a rule about {topic}. Write one more rule about it.' }
   };
@@ -98,6 +147,9 @@
     typePageCommon: typePageCommon,
     rulebookCategories: rulebookCategories,
     rulebookCommon: rulebookCommon,
+    rulebookConcrete: rulebookConcrete,
+    rulebookKinds: rulebookKinds,
+    sizeScale: sizeScale,
     undoRules: undoRules,
     undoCommon: undoCommon,
     seedClub: seedClub,
@@ -170,6 +222,17 @@
       compareBefore: 'Before',
       compareAfter: 'After',
       hintCheckNote: 'This is a check. If you use a hint, you will repeat the check without one.',
+      kindsLabel: 'What this practice game understands',
+      stuckTitle: 'Stuck after three tries?',
+      stuckTextStep: 'A complete example is free in a practice step. You can still type your own answer after.',
+      stuckTextCheck: 'Two ways out. A complete example counts as a hint, so the check repeats with new words. Starting again with new words costs nothing.',
+      stuckTextRestart: 'You can start this check again with new words. It costs nothing.',
+      stuckTextFinal: 'This level has no hints. You can start it again from the empty folder.',
+      stuckExample: 'Show a complete example',
+      stuckRestart: 'Restart the check with new words',
+      stuckRestartFinal: 'Start this level again',
+      exampleLabel: 'A complete example',
+      exampleCheckNote: 'This is a check. A complete example counts as a hint, so you will repeat the check with new words.',
       nextStep: 'Next step',
       toQuestion: 'Go to the question',
       board: 'The board',
