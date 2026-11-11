@@ -10,9 +10,11 @@ const assert = require('node:assert');
 const path = require('path');
 
 const SITE = path.join(__dirname, '..', 'site');
-require(path.join(SITE, 'content', 'en.js'));
+require('./helpers/content').loadContent();
 require(path.join(SITE, 'content', 'facts.js'));
 require(path.join(SITE, 'js', 'engine.js'));
+
+require('../site/content/en-finale.js');
 
 const { content: C, facts, engine: E } = globalThis.CHECKMATE;
 const built = Object.keys(C.levels).map(Number);
@@ -35,8 +37,8 @@ test('the six levels are listed, in order, one piece each', () => {
   assert.deepStrictEqual(C.levelList.map((l) => l.piece), ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']);
 });
 
-test('levels 1 to 4 are built, and each ends with a check followed by a question', () => {
-  assert.deepStrictEqual(built, [1, 2, 3, 4]);
+test('all six levels are built, and each ends with a check followed by a question', () => {
+  assert.deepStrictEqual(built, [1, 2, 3, 4, 5, 6]);
   for (const n of built) {
     const steps = C.levels[n].steps;
     assert.ok(steps.some((s) => s.check), `level ${n} needs a mastery check`);
@@ -44,6 +46,19 @@ test('levels 1 to 4 are built, and each ends with a check followed by a question
     assert.ok(steps[steps.length - 2].check, `level ${n}: the check comes right before the question`);
   }
 });
+
+test('the level list agrees with the level data: file, step count, and the files exist', () => {
+  const fs = require('fs');
+  for (const meta of C.levelList) {
+    assert.ok(meta.files && meta.files.length, `level ${meta.id} lists no files`);
+    assert.ok(meta.files.includes(`content/en-level-${meta.id}.js`), `level ${meta.id} must list its own data file`);
+    for (const file of meta.files) assert.ok(fs.existsSync(path.join(SITE, file)), `${file} does not exist`);
+    assert.strictEqual(meta.steps, C.levels[meta.id].steps.length, `level ${meta.id}: the list says ${meta.steps} steps`);
+  }
+});
+
+const CAPSTONE_HINT_MESSAGES = ['empty', 'planNoEdit', 'vagueRule', 'nothingToUndo', 'pageExists', 'noPageYet', 'badCombo', 'needHow', 'needPart', 'vague', 'notUnderstood'];
+const CAPSTONE_KEYS = [...CAPSTONE_HINT_MESSAGES, 'createRulebook', 'updateRulebook', 'askCreateRulebook', 'askUpdateRulebook', 'savedRulebook', 'noRulebook', 'undone', 'createPage', 'askCreatePage', 'createdPage', 'noPage', 'changeReply', 'askChange', 'changedPage', 'noChange', 'whatTitleColor', 'whatTitleSize', 'whatBackground', 'whatFooter', 'partTitle', 'partBackground', 'planReply', 'approvePlan', 'approveYes', 'approveNo', 'planApproved', 'planDiscarded', 'unwantedReply', 'unwantedAsk', 'unwantedYes', 'unwantedNo'];
 
 for (const n of built) {
   test(`level ${n}: every step is complete and every rule points to a real answer`, () => {
@@ -58,6 +73,16 @@ for (const n of built) {
         continue;
       }
 
+      if (step.kind === 'capstone') {
+        assert.strictEqual(step.hints, undefined, `${where}: the final level has no hints`);
+        assert.strictEqual(step.goals.length, 6, `${where}: six goals`);
+        assert.deepStrictEqual(step.goals.map((g) => g.id), ['page', 'improve', 'rules', 'deny', 'undo', 'plan']);
+        for (const key of CAPSTONE_KEYS) assert.ok(typeof step.messages[key] === 'string' && step.messages[key].length > 3, `${where}: message "${key}" is missing`);
+        assert.ok(step.categories.length >= 3 && step.junk.length >= 3 && step.plans.create.items.length && step.plans.change.items.length, `${where}: categories, junk files and plans`);
+        assert.ok(step.board.length >= 3, `${where}: the folder starts with old files`);
+        assert.ok(step.doneVerdict, `${where}: doneVerdict`);
+        continue;
+      }
       assert.ok(step.hints && step.hints.length >= 2, `${where}: at least two hints, from gentle to direct`);
       assert.ok(step.variants && step.variants.length >= 1, `${where}: variants`);
       if (step.check) assert.ok(step.variants.length >= 3, `${where}: a check needs 3 or more variants`);
@@ -112,6 +137,11 @@ for (const n of built) {
   test(`level ${n}: nothing the learner reads still has a {placeholder}`, () => {
     for (const step of C.levels[n].steps) {
       if (step.kind === 'question') continue;
+      if (step.kind === 'capstone') {
+        const vars = { line: 2, text: 'x', file: 'x', what: 'x', value: 'x', part: 'x' };
+        for (const [key, text] of Object.entries(step.messages)) assert.ok(!leftover(E.fill(text, vars)), `level ${n} capstone message ${key}`);
+        continue;
+      }
       for (const variant of step.variants) {
         const vars = Object.assign({}, variant, RUNTIME);
         const texts = [];
@@ -138,10 +168,11 @@ for (const n of built) {
 
   test(`level ${n}: the recap names a concept, a way to start the real tool and a next piece`, () => {
     const recap = C.levels[n].recap;
-    for (const key of ['concept', 'realStart', 'next']) assert.ok(recap[key] && recap[key].length > 3, `recap.${key}`);
+    for (const key of n < 6 ? ['concept', 'realStart', 'next'] : ['concept', 'realStart']) assert.ok(recap[key] && recap[key].length > 3, `recap.${key}`);
     assert.ok(recap.items.length >= 1);
     for (const item of recap.items) assert.ok(item.label && item.value, 'each recap item needs a label and a value');
-    assert.strictEqual(recap.next, C.levelList[n].name, `recap of level ${n} must point to the next piece`);
+    if (n < 6) assert.strictEqual(recap.next, C.levelList[n].name, `recap of level ${n} must point to the next piece`);
+    else assert.strictEqual(recap.next, null, 'the last level has no next piece');
   });
 
   test(`level ${n}: every wrong move says what to try next (never just "incorrect")`, () => {
@@ -175,8 +206,8 @@ test('the reading level stays plain: short sentences', () => {
 test('every command, key or label the lessons teach appears in facts.js with a documented source', () => {
   const lessons = allStrings(C.levels).join('\n');
   const known = JSON.stringify(facts);
-  const mentioned = new Set(lessons.match(/\/[a-z]{3,}\b|Shift\+Tab|\bEsc\b/g) || []);
-  assert.ok(mentioned.size >= 3, 'the lessons should mention /init, /rewind and a key');
+  const mentioned = new Set(lessons.match(/\/[a-z]{3,}\b|Shift\+Tab|Ctrl\+G|\bEsc\b/g) || []);
+  assert.ok(mentioned.size >= 5, 'the lessons should mention /init, /rewind, /plan and keys');
   for (const item of mentioned) assert.ok(known.includes(item), `"${item}" is taught but is not in facts.js`);
   for (const label of ['Manual', 'Accept edits', 'Plan', 'Auto']) {
     assert.ok(lessons.includes(label), `mode "${label}" is missing from the lessons`);
@@ -209,4 +240,56 @@ test('the two documented limits of undo are taught', () => {
   const recap = JSON.stringify(C.levels[4].recap);
   assert.match(recap, /not files changed only by a command/);
   assert.match(recap, /With text in the box, Esc twice clears the text/);
+});
+
+test('level 6: no hints anywhere, and every error says what kind of thing to try, never the answer', () => {
+  const step = C.levels[6].steps[0];
+  assert.ok(!('hints' in step));
+  for (const key of CAPSTONE_HINT_MESSAGES) {
+    const text = step.messages[key];
+    assert.match(text, /\b(?:say|type|tell|name|switch|try|think|ask|read|make)\b/i, `${key} does not say what to try`);
+    assert.ok(!/\bincorrect\b|\bwrong\b/i.test(text), `${key} just says wrong`);
+    for (const giveaway of ['green', 'blue', 'footer', 'CLAUDE.md', 'Plan mode', '/rewind', 'undo that', 'take that back']) {
+      assert.ok(!text.toLowerCase().includes(giveaway.toLowerCase()) || key === 'planNoEdit', `${key} gives away "${giveaway}"`);
+    }
+  }
+});
+
+test('level 5 teaches only what the official documentation says about Plan mode', () => {
+  const lessons = allStrings(C.levels[5]).join('\n');
+  for (const needle of [facts.plan.approveManual, facts.plan.keepPlanning, facts.plan.editInTerminal, '/plan', 'Shift+Tab']) assert.ok(lessons.includes(needle), `level 5 should mention "${needle}"`);
+  assert.ok(JSON.stringify(facts.plan).includes('permission-modes'));
+  assert.match(C.levels[5].recap.realStart, /wording of these options can differ between versions/);
+});
+
+test('the end screen: every command and page is in facts.js, and every link is an official page', () => {
+  const F = C.finale;
+  const known = facts.finale;
+  const urls = new Set();
+  const commands = [];
+  for (const step of F.checklist.steps) {
+    for (const command of step.commands || []) commands.push(command.code);
+    for (const link of [step.source, step.extra, ...(step.extras || [])].filter(Boolean)) urls.add(link.url);
+    assert.ok(step.source && step.source.url, `step ${step.id} has no official page`);
+    assert.ok(step.title && step.body.length, `step ${step.id}: title and text`);
+  }
+  for (const command of commands) assert.ok(known.commands.includes(command), `"${command}" is not in facts.js`);
+  for (const url of urls) {
+    assert.match(url, /^https:\/\/code\.claude\.com\/docs\/en\/[a-z-]+$/, url);
+    assert.ok(known.pages.includes(url.split('/').pop()), `${url} is not listed in facts.js`);
+  }
+  assert.strictEqual(F.checklist.checkedOn, facts.checkedOn, 'the checklist date must match facts.js');
+});
+
+test('the end screen does not state how to undo in the desktop app, and names no price', () => {
+  const text = allStrings(C.finale).join('\n');
+  assert.ok(!/desktop.{0,60}(undo|rewind)|(undo|rewind).{0,60}desktop/i.test(text));
+  assert.ok(!/[$€£]\s?\d|\bper month\b|\bfree trial\b/i.test(text), 'no prices');
+  assert.match(text, /ask the assistant to undo a change/);
+  assert.match(text, /\/rewind opens a menu/);
+});
+
+test('the end screen says the names of buttons can change, and shows the date it was checked', () => {
+  assert.match(C.finale.checklist.lead, /names of buttons can change/);
+  assert.match(C.finale.checklist.lead, /\{date\}/);
 });

@@ -12,7 +12,7 @@
 
   app.facts = {
     /* Date of the last check against the official documentation (also shown on the landing page). */
-    checkedOn: '2026-11-10',
+    checkedOn: '2026-11-11',
     docsHome: DOCS + 'overview',
 
     product: {
@@ -53,11 +53,45 @@
       source: DOCS + 'permission-modes'
     },
 
+    /*
+      Plan mode (level 5). Source: permission-modes ("Analyze before you edit with plan mode", "Review and approve a plan"),
+      desktop-quickstart (the desktop mode list) and glossary ("Plan mode").
+      The three options below are documented for the prompt that appears when a plan is ready. The first option reads
+      differently when auto mode is not available, so the game teaches only the two that always apply.
+      NOT VERIFIED for the desktop app: the exact wording of the approval buttons there. The game shows them as an
+      example and the recap says the wording can differ between versions.
+    */
+    plan: {
+      mode: 'Plan',
+      enter: 'Shift+Tab, or start one message with /plan',
+      approveManual: 'Yes, manually approve edits',
+      keepPlanning: 'No, keep planning',
+      editInTerminal: 'Ctrl+G',
+      source: DOCS + 'permission-modes'
+    },
+
     /* Standing instructions for a project. */
     rulebook: {
       fileName: 'CLAUDE.md',
       createCommand: '/init',
       source: DOCS + 'memory'
+    },
+
+    /*
+      The end screen: the checklist "Your first real session". Each step names its official page.
+      content/en-finale.js must use only these commands and these pages (tests/content.test.js checks it).
+    */
+    finale: {
+      commands: [
+        'curl -fsSL https://claude.ai/install.sh | bash',
+        'irm https://claude.ai/install.ps1 | iex',
+        'claude --version',
+        'cd /path/to/your/project',
+        'claude',
+        'make me a simple webpage that says hello world'
+      ],
+      pages: ['quickstart', 'desktop-quickstart', 'terminal-guide', 'permission-modes', 'best-practices', 'memory', 'checkpointing'],
+      source: DOCS + 'quickstart'
     },
 
     /* Undo. The desktop app is not listed: its undo control is not in the official documentation. */

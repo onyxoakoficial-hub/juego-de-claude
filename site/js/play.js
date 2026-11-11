@@ -24,7 +24,8 @@
     title: doc.querySelector('[data-title]'),
     lead: doc.querySelector('[data-lead]'),
     mapView: doc.querySelector('[data-view="map"]'),
-    levelView: doc.querySelector('[data-view="level"]')
+    levelView: doc.querySelector('[data-view="level"]'),
+    finaleView: doc.querySelector('[data-view="finale"]')
   };
 
   function $(selector, scope) {
@@ -76,8 +77,38 @@
     return C.levelList[n - 1];
   }
 
+  /* A level is built when the core file lists the files it needs. Its data is loaded when it is opened. */
   function isBuilt(n) {
-    return Boolean(C.levels[n]);
+    var meta = levelMeta(n);
+    return Boolean(meta && meta.files && meta.files.length);
+  }
+
+  var loaded = {};
+
+  /* Load script files one after the other (same site only), then call done. */
+  function loadFiles(files, done, fail) {
+    var pending = files.filter(function (file) { return !loaded[file]; });
+    if (!pending.length) {
+      done();
+      return;
+    }
+    var left = pending.length;
+    var failed = false;
+    pending.forEach(function (file) {
+      var script = doc.createElement('script');
+      script.src = file;
+      script.async = false;
+      script.onload = function () {
+        loaded[file] = true;
+        left -= 1;
+        if (left === 0 && !failed) done();
+      };
+      script.onerror = function () {
+        failed = true;
+        fail(file);
+      };
+      doc.head.appendChild(script);
+    });
   }
 
   /* ---------- Route ---------- */
@@ -89,8 +120,18 @@
     var hash = root.location.hash.replace('#', '');
     var n = /^[1-6]$/.test(hash) ? Number(hash) : 0;
 
+    if (hash === 'done') {
+      if (store.isPassed(C.levelList.length)) {
+        openFinale();
+        return;
+      }
+      selectedLevel = C.levelList.length;
+      message = U.finaleLocked;
+      showMap();
+      return;
+    }
     if (n && store.isUnlocked(n) && isBuilt(n)) {
-      showLevel(n);
+      openLevel(n);
       return;
     }
     if (n) {
@@ -138,6 +179,7 @@
     document.title = U.pageTitle;
     setHead(U.mapEyebrow, U.mapTitle, U.mapLead, { text: 'Home', href: 'index.html' });
     show(page.levelView, false);
+    show(page.finaleView, false);
     show(page.mapView, true);
 
     var map = $('[data-map]', page.mapView);
@@ -201,12 +243,17 @@
     else if (state === 'locked') status = E.fill(U.lockedLevel, { n: meta.id - 1 });
     else if (state === 'soon') status = U.comingSoon;
     else {
-      var total = C.levels[meta.id].steps.length;
+      var total = meta.steps;
       status = store.stepsDone(meta.id) > 0
         ? E.fill(U.levelStatusSteps, { done: store.stepsDone(meta.id), total: total })
         : U.levelOpenStatus;
     }
     put($('[data-card-status]', page.mapView), status);
+
+    var everything = C.levelList.every(function (item) { return store.isPassed(item.id); });
+    var endLink = $('[data-done-link]', page.mapView);
+    show(endLink, everything);
+    put(endLink, U.mapFinaleLink);
 
     var play = $('[data-card-play]', page.mapView);
     var playable = state === 'ready' || state === 'passed';
@@ -251,7 +298,9 @@
     'recap', 'recap-title', 'recap-concept-label', 'recap-concept', 'recap-items', 'recap-real-label', 'recap-real',
     'recap-next-label', 'recap-next', 'recap-map', 'live', 'board-label', 'board-note', 'board', 'board-status',
     'preview-label', 'preview-note', 'preview-bar', 'preview-empty', 'preview-page', 'preview-site',
-    'preview-heading', 'preview-footer', 'preview-text', 'compare', 'compare-label', 'compare-before', 'compare-after'
+    'preview-heading', 'preview-footer', 'preview-text', 'compare', 'compare-label', 'compare-before', 'compare-after',
+    'plan', 'plan-title', 'plan-list', 'ask-change', 'capstone', 'goals-label', 'goals-list', 'goals-progress', 'mode-label',
+    'mode-chips', 'recap-done'
   ].forEach(function (name) {
     el[name] = $('[data-' + name + ']', page.levelView);
   });
@@ -272,6 +321,28 @@
 
   function announceLive(text) {
     put(el.live, text);
+  }
+
+  /* Open a level: load its data first, then draw it. */
+  function openLevel(n) {
+    var meta = levelMeta(n);
+    if (C.levels[n]) {
+      showLevel(n);
+      return;
+    }
+    document.title = U.pageTitle;
+    setHead(E.fill(U.levelEyebrow, { n: n, total: C.levelList.length }), meta.name + ': ' + meta.move, U.loading, { text: U.backToMap, href: '#map' });
+    show(page.mapView, false);
+    show(page.levelView, false);
+    loadFiles(
+      meta.files,
+      function () {
+        if (root.location.hash === '#' + n) showLevel(n);
+      },
+      function () {
+        put(page.lead, U.loadFailed);
+      }
+    );
   }
 
   function showLevel(n) {
@@ -301,6 +372,7 @@
       { text: U.backToMap, href: '#map' }
     );
     show(page.mapView, false);
+    show(page.finaleView, false);
     show(page.levelView, true);
 
     put(el['reply-who'], U.theAssistant);
@@ -419,7 +491,7 @@
   /* ---------- A step ---------- */
 
   function resetStepParts() {
-    [el.hint, el.reply, el.ask, el.verdict, el.question, el.recap, el.build, el.type, el['review-line']].forEach(function (node) {
+    [el.hint, el.reply, el.ask, el.verdict, el.question, el.recap, el.build, el.type, el['review-line'], el.plan, el.capstone].forEach(function (node) {
       show(node, false);
     });
     put(el['reply-text'], '');
@@ -428,6 +500,7 @@
     session.hints = 0;
     session.pending = null;
     session.eventIndex = 0;
+    session.cap = null;
     el.input.value = '';
     el.input.disabled = false;
     show(el.announce, true);
@@ -460,6 +533,7 @@
     if (current.kind === 'question') renderQuestion(current);
     else if (current.kind === 'review') renderReviewEvent();
     else if (current.kind === 'build') renderBuild(current);
+    else if (current.kind === 'capstone') renderCapstone(current);
     else renderTyped(current);
 
     announceLive(E.fill(U.stepLine, { n: session.index + 1, total: total }) + '. ' + el.task.textContent);
@@ -593,10 +667,16 @@
   }
 
   function announceMove() {
+    if (step().kind === 'capstone') {
+      capAnnounce();
+      return;
+    }
     var active = activeStep();
     if (!active) return;
     var input = active.kind === 'build' ? session.selection : el.input.value;
     var res = E.announce(active, variant(), input, { rules: world.rules });
+
+    if (res.plan) showPlan(res.plan);
 
     if (res.type === 'ask') {
       session.pending = res;
@@ -607,7 +687,7 @@
       show(el.actions, false);
       return;
     }
-    if (res.type === 'done') {
+    if (res.type === 'done' || res.type === 'plan') {
       say(res.reply, 'done');
       completeMove(res);
       return;
@@ -615,7 +695,25 @@
     say(res.reply, 'hint');
   }
 
+  /* ---------- The plan card ---------- */
+
+  function showPlan(plan) {
+    put(el['plan-title'], plan.title);
+    el['plan-list'].textContent = '';
+    plan.items.forEach(function (item) {
+      el['plan-list'].appendChild(make('li', '', item));
+    });
+    show(el.plan, true);
+  }
+
+  function hidePlan() {
+    show(el.plan, false);
+  }
+
   function showAsk(ask) {
+    put(el.yes, ask.yesLabel || U.yes);
+    put(el.no, ask.noLabel || U.no);
+    show(el['ask-change'], Boolean(ask.file));
     put(el['ask-question'], ask.question);
     put(el['ask-mark'], ask.mark);
     put(el['ask-file'], ask.file);
@@ -632,6 +730,10 @@
   }
 
   function deny() {
+    if (step().kind === 'capstone') {
+      capAnswer(false);
+      return;
+    }
     if (step().kind === 'review') {
       answerReview('no');
       return;
@@ -646,6 +748,10 @@
   }
 
   function approve() {
+    if (step().kind === 'capstone') {
+      capAnswer(true);
+      return;
+    }
     if (step().kind === 'review') {
       answerReview('yes');
       return;
@@ -734,6 +840,9 @@
     show(el.actions, true);
     renderHintButton();
 
+    if (event.plan) showPlan(event.plan);
+    else hidePlan();
+
     if (event.kind === 'ask') {
       show(el.type, false);
       show(el.announce, false);
@@ -744,9 +853,7 @@
     show(el.ask, false);
     show(el.announce, true);
     put(el.announce, U.announce);
-    put(el.context, event.prompt);
-    show(el.context, true);
-    showTypeBox(U.reviewTypeLabel, U.typeHelp, 2);
+    showTypeBox(event.prompt || U.reviewTypeLabel, U.typeHelp, 2);
     announceLive(event.prompt);
   }
 
@@ -823,7 +930,7 @@
   function renderRecap() {
     var recap = session.level.recap;
     var after = levelMeta(session.n + 1);
-    [el.build, el.type, el.question, el.verdict, el.hint, el.reply, el.context, el.nextline, el.actions, el.ask].forEach(function (node) {
+    [el.build, el.type, el.question, el.verdict, el.hint, el.reply, el.context, el.nextline, el.actions, el.ask, el.plan, el.capstone].forEach(function (node) {
       show(node, false);
     });
 
@@ -854,12 +961,197 @@
     var nextText = after ? after.name + ': ' + after.move + '. ' + after.blurb : '';
     if (after && !isBuilt(after.id)) nextText += ' ' + E.fill(U.recapNextLevel, { n: after.id });
     put(el['recap-next'], nextText);
+    show(el['recap-next'], Boolean(nextText));
+    show(el['recap-next-label'], Boolean(nextText));
     put(el['recap-map'], U.recapMapButton);
+    var last = session.n === C.levelList.length;
+    show(el['recap-map'], !last);
+    put(el['recap-done'], U.recapFinale);
+    show(el['recap-done'], last);
 
     show(el.recap, true);
     announceLive(el['recap-title'].textContent);
     el.recap.focus({ preventScroll: true });
     reveal(el.recap);
+  }
+
+  /* ---------- Final level: a free session with six goals and no hints ---------- */
+
+  function capGoals() {
+    return E.capstoneGoals(session.cap.log, step().goals.map(function (goal) { return goal.id; }));
+  }
+
+  function renderGoals() {
+    var state = capGoals();
+    var goals = step().goals;
+    var count = 0;
+    el['goals-list'].textContent = '';
+    goals.forEach(function (goal) {
+      var done = Boolean(state[goal.id]);
+      if (done) count += 1;
+      var item = make('li', 'goals__item');
+      if (done) item.setAttribute('data-done', '');
+      var box = make('span', 'goals__box');
+      box.setAttribute('aria-hidden', 'true');
+      if (done) box.appendChild(icon('icon-check'));
+      item.appendChild(box);
+      item.appendChild(make('span', 'visually-hidden', done ? U.goalDone : U.goalTodo));
+      item.appendChild(make('span', '', goal.text));
+      el['goals-list'].appendChild(item);
+    });
+    put(el['goals-progress'], E.fill(U.goalsProgress, { done: count, total: goals.length }));
+    return count === goals.length;
+  }
+
+  function lockModes(locked) {
+    el['mode-chips'].querySelectorAll('.chip').forEach(function (chip) {
+      chip.disabled = locked;
+    });
+  }
+
+  function setMode(id, speak) {
+    session.cap.mode = id;
+    var name = '';
+    el['mode-chips'].querySelectorAll('.chip').forEach(function (chip) {
+      var on = chip.getAttribute('data-mode') === id;
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) name = chip.textContent;
+    });
+    if (speak) announceLive(E.fill(U.modeOn, { mode: name }));
+  }
+
+  function renderCapstone(current) {
+    session.cap = { mode: 'manual', log: [], pending: null, finished: false };
+    show(el.capstone, true);
+    put(el['goals-label'], U.goalsLabel);
+    put(el['mode-label'], U.modeLabel);
+    el['mode-chips'].textContent = '';
+    current.modes.forEach(function (mode) {
+      var chip = make('button', 'chip', mode.text);
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', mode.id === 'manual' ? 'true' : 'false');
+      chip.setAttribute('data-mode', mode.id);
+      chip.addEventListener('click', function () {
+        setMode(mode.id, true);
+      });
+      el['mode-chips'].appendChild(chip);
+    });
+    renderGoals();
+    show(el.actions, true);
+    show(el.announce, true);
+    show(el['hint-button'], false);
+    put(el.announce, U.announce);
+    showTypeBox(U.typeLabel, U.captureHelp, 2);
+  }
+
+  function capAnnounce() {
+    var cap = session.cap;
+    var state = capGoals();
+    var ctx = {
+      mode: cap.mode,
+      files: world.files,
+      hasPage: world.files.indexOf('index.html') !== -1,
+      undoable: world.undoable,
+      rules: world.rules,
+      ruleLines: world.ruleLines,
+      denied: Boolean(state.deny)
+    };
+    var move = E.capstone(step(), el.input.value, ctx);
+
+    if (move.type === 'hint') {
+      say(move.reply, 'hint');
+      return;
+    }
+    if (move.type === 'done') {
+      applyEffects(move.effects);
+      cap.log.push({ goals: move.goals });
+      say(move.reply, 'done');
+      capCheckDone();
+      return;
+    }
+    capAsk(move, move.reply);
+  }
+
+  function capAsk(move, text) {
+    session.cap.pending = move;
+    say(text, 'ask');
+    if (move.plan) showPlan(move.plan);
+    else hidePlan();
+    showAsk(move.ask);
+    lockInput(true);
+    lockModes(true);
+    show(el.actions, false);
+  }
+
+  function capAnswer(yes) {
+    var cap = session.cap;
+    var move = cap.pending;
+    if (!move) return;
+    var branch = yes ? move.yes : move.no;
+    cap.pending = null;
+    show(el.ask, false);
+    hidePlan();
+
+    if (branch.effects && branch.effects.length) applyEffects(branch.effects);
+    cap.log.push({ goals: branch.goals || [], improveKey: branch.improveKey || null });
+    if (branch.setMode) setMode(branch.setMode, false);
+
+    var complete = renderGoals();
+    /* A request that follows (for example the first edit of an approved plan) is still asked, even when every goal is checked. */
+    if (branch.then) {
+      capAsk(branch.then, branch.reply + ' ' + branch.then.reply);
+      return;
+    }
+    say(branch.reply, yes ? 'done' : 'hint');
+    if (complete) {
+      capFinish();
+      return;
+    }
+    lockInput(false);
+    lockModes(false);
+    show(el.actions, true);
+    el.input.value = '';
+    el.input.focus({ preventScroll: true });
+  }
+
+  function capCheckDone() {
+    if (renderGoals()) capFinish();
+  }
+
+  function capFinish() {
+    if (session.cap.finished) return;
+    session.cap.finished = true;
+    lockInput(true);
+    lockModes(true);
+    finishStep(step().doneVerdict);
+  }
+
+  /* ---------- The end: the card and the checklist for the first real session ---------- */
+
+  function openFinale() {
+    document.title = U.pageTitle;
+    setHead(U.finaleEyebrow, '…', U.loading, { text: U.backToMap, href: '#map' });
+    show(page.mapView, false);
+    show(page.levelView, false);
+    show(page.finaleView, false);
+    loadFiles(
+      ['content/en-finale.js', 'js/finale.js'],
+      function () {
+        if (root.location.hash === '#done') showFinale();
+      },
+      function () {
+        put(page.lead, U.loadFailed);
+      }
+    );
+  }
+
+  function showFinale() {
+    var F = C.finale;
+    document.title = F.title + ' — Checkmate';
+    setHead(U.finaleEyebrow, F.title, F.lead, { text: U.backToMap, href: '#map' });
+    show(page.finaleView, true);
+    var box = $('[data-finale]', page.finaleView);
+    if (!box.hasChildNodes()) app.finale.render(box, doc);
   }
 
   /* ---------- Wire up ---------- */

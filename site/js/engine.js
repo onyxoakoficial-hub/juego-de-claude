@@ -158,20 +158,26 @@
     when: { empty: true } | { all: [[a, b], [c]], none: [[d]] }
     "all": every list needs at least one of its words. "none": no list may have any of its words.
   */
-  function textMatches(when, text) {
+  /* A list of words can name a list kept in the variant: "$topic" means variant.topic. */
+  function wordList(entry, variant) {
+    if (typeof entry === 'string' && entry.charAt(0) === '$') return (variant && variant[entry.slice(1)]) || [];
+    return entry;
+  }
+
+  function textMatches(when, text, variant) {
     var list = words(text);
     if (when && when.empty) return list.length === 0;
     var all = (when && when.all) || [];
     var none = (when && when.none) || [];
-    for (var i = 0; i < all.length; i += 1) if (!hasAny(list, all[i])) return false;
-    for (var j = 0; j < none.length; j += 1) if (hasAny(list, none[j])) return false;
+    for (var i = 0; i < all.length; i += 1) if (!hasAny(list, wordList(all[i], variant))) return false;
+    for (var j = 0; j < none.length; j += 1) if (hasAny(list, wordList(none[j], variant))) return false;
     return true;
   }
 
-  function evaluateText(step, text) {
+  function evaluateText(step, text, variant) {
     var rules = step.rules || [];
     for (var i = 0; i < rules.length; i += 1) {
-      if (textMatches(rules[i].when, text)) return rules[i].outcome;
+      if (textMatches(rules[i].when, text, variant)) return rules[i].outcome;
     }
     return 'empty';
   }
@@ -308,6 +314,7 @@
         : null,
       effect: effects[0] || null,
       effects: effects,
+      plan: spec.plan ? fillDeep(spec.plan, vars) : null,
       completes: Boolean(spec.completes),
       verdict: fill(spec.verdict, vars)
     };
@@ -324,7 +331,7 @@
     var ctx = Object.assign({ rules: [] }, context || {});
     var key;
     if (step.kind === 'type') {
-      key = evaluateText(step, input);
+      key = evaluateText(step, input, variant);
     } else if (step.kind === 'rules') {
       var read = readRulebook(step, variant, input);
       key = read.outcome;
@@ -390,6 +397,7 @@
     var current = { kind: 'none' };
     var created = {};
     var edited = {};
+    var ruleLines = [];
     var start = from || 0;
 
     function add(file) {
@@ -421,6 +429,7 @@
       } else if (effect.kind === 'rulebook') {
         add(effect.file);
         rules = effect.rules || [];
+        ruleLines = effect.lines || [];
         current = { kind: 'rulebook', file: effect.file, lines: effect.lines || [] };
       } else if (effect.kind === 'delete') {
         files = files.filter(function (file) { return file !== effect.file; });
@@ -435,7 +444,8 @@
       }
     });
 
-    return { files: files, view: current, rules: rules, created: Object.keys(created), edited: Object.keys(edited) };
+    var undoable = Object.keys(stacks).some(function (file) { return stacks[file].length > 1; });
+    return { files: files, view: current, rules: rules, ruleLines: ruleLines, undoable: undoable, created: Object.keys(created), edited: Object.keys(edited) };
   }
 
   /* ---------- Progress ---------- */
@@ -543,6 +553,11 @@
     textMatches: textMatches,
     evaluateText: evaluateText,
     readRulebook: readRulebook,
+    words: words,
+    hasAny: hasAny,
+    splitLines: splitLines,
+    classifyLine: classifyLine,
+    ruleValue: ruleValue,
     rulesToSet: rulesToSet,
     announce: announce,
     answer: answer,

@@ -10,7 +10,7 @@ const assert = require('node:assert');
 const path = require('path');
 
 const SITE = path.join(__dirname, '..', 'site');
-require(path.join(SITE, 'content', 'en.js'));
+require('./helpers/content').loadContent();
 require(path.join(SITE, 'js', 'engine.js'));
 
 const { engine: E, content: C } = globalThis.CHECKMATE;
@@ -415,6 +415,269 @@ test('a deleted file leaves the board, and the preview forgets it', () => {
   assert.strictEqual(world.view.kind, 'none');
 });
 
+/* ---------- Level 5: Plan mode ---------- */
+
+const [l5mode, l5ask, l5edit, l5approve, l5check] = C.levels[5].steps;
+
+test('level 5: only Plan mode finishes the mode step, and every other mode explains itself', () => {
+  assert.strictEqual(E.announce(l5mode, {}, { mode: 'plan' }).completes, true);
+  for (const mode of ['manual', 'acceptEdits', 'auto']) assert.strictEqual(E.announce(l5mode, {}, { mode }).completes, false, mode);
+  assert.match(E.announce(l5mode, {}, { mode: 'auto' }).reply, /background checker/);
+});
+
+test('level 5: asking for a plan gives a plan and changes nothing', () => {
+  for (const text of ['Plan a schedule page', 'make me a schedule', 'Can you draft a timetable page?', 'build a web page']) {
+    const result = say(l5ask, text);
+    assert.strictEqual(result.outcome, 'good', text);
+    assert.strictEqual(result.type, 'plan');
+    assert.deepStrictEqual(result.effects, [], 'a plan must not change a file');
+    assert.strictEqual(result.plan.items.length, 4);
+  }
+  assert.strictEqual(say(l5ask, 'make something').outcome, 'needObject');
+  assert.strictEqual(say(l5ask, 'a schedule page').outcome, 'needAction');
+  assert.strictEqual(say(l5ask, '').outcome, 'empty');
+});
+
+test('level 5: the learner can change the plan in their own words', () => {
+  const variant = E.variantFor(l5edit, 0);
+  const event = E.reviewEvent(l5edit, variant, 0);
+  const edit = (text) => E.announce(event, variant, text, { rules: [] });
+  for (const text of ['remove step 4', 'Drop the gallery', 'I do not want the photo gallery', 'take out the last step', 'delete the pictures', 'without photos']) {
+    const result = edit(text);
+    assert.strictEqual(result.outcome, 'good', text);
+    assert.strictEqual(result.plan.items.length, 3);
+    assert.ok(!result.plan.items.join(' ').includes('gallery'), 'the unwanted step is gone');
+  }
+  assert.strictEqual(edit('the gallery').outcome, 'needAction');
+  assert.strictEqual(edit('remove step 2').outcome, 'needTarget');
+  assert.strictEqual(edit('looks good').outcome, 'notUnderstood');
+  assert.strictEqual(edit('').outcome, 'empty');
+});
+
+test('level 5: approving a plan still asks before the first edit', () => {
+  const [approve, create] = [0, 1].map((i) => E.reviewEvent(l5approve, {}, i));
+  assert.strictEqual(approve.ask.yesLabel, 'Yes, manually approve edits');
+  assert.strictEqual(approve.ask.noLabel, 'No, keep planning');
+  assert.strictEqual(E.reviewAnswer(approve, 'yes').right, true);
+  assert.deepStrictEqual(E.reviewAnswer(approve, 'yes').effects, [], 'approving the plan changes no file');
+  assert.strictEqual(E.reviewAnswer(approve, 'no').right, false);
+  const made = E.reviewAnswer(create, 'yes');
+  assert.strictEqual(made.effects[0].file, 'schedule.html');
+  assert.strictEqual(E.replay(made.effects).files[0], 'schedule.html');
+});
+
+test('level 5 check: each variant has its own plan, its own unwanted step and its own file', () => {
+  l5check.variants.forEach((variant) => {
+    const [ask, edit, approve, create] = [0, 1, 2, 3].map((i) => E.reviewEvent(l5check, variant, i));
+    const plan = E.announce(ask, variant, `plan a ${variant.job}`, { rules: [] });
+    assert.strictEqual(plan.outcome, 'good');
+    assert.strictEqual(plan.plan.items[0], `Create ${variant.file}`);
+    const unwanted = E.announce(edit, variant, `remove the ${variant.extra}`, { rules: [] });
+    assert.strictEqual(unwanted.outcome, 'good', variant.job);
+    assert.strictEqual(unwanted.plan.items.length, 3);
+    assert.strictEqual(E.announce(edit, variant, 'remove step 2', { rules: [] }).outcome, 'needTarget');
+    assert.strictEqual(approve.correct, 'yes');
+    assert.strictEqual(E.reviewAnswer(create, 'yes').effects[0].file, variant.file);
+    assert.strictEqual(E.reviewEvent(l5check, variant, 4), null);
+  });
+});
+
+/* ---------- Level 6: the final project ---------- */
+
+const cap = C.levels[6].steps[0];
+
+/*
+  A small stand-in for the page: it keeps the board, the goals log and the mode, and answers each
+  typed line or yes/no the way js/play.js does. Used to play the whole final level with the engine alone.
+*/
+function playCapstone(step, script, startEffects) {
+  const state = { effects: (startEffects && startEffects.length ? startEffects : E.fillDeep(step.board, {})).slice(), log: [], mode: 'manual', pending: null, replies: [] };
+  const goalIds = step.goals.map((g) => g.id);
+  const context = () => {
+    const world = E.replay(state.effects);
+    const goals = E.capstoneGoals(state.log, goalIds);
+    return { mode: state.mode, files: world.files, hasPage: world.files.includes('index.html'), undoable: world.undoable, rules: world.rules, ruleLines: world.ruleLines, denied: Boolean(goals.deny) };
+  };
+  const ask = (move, text) => { state.pending = move; state.replies.push(text); };
+  const answer = (yes) => {
+    const branch = yes ? state.pending.yes : state.pending.no;
+    state.pending = null;
+    state.effects.push(...(branch.effects || []));
+    state.log.push({ goals: branch.goals || [], improveKey: branch.improveKey || null });
+    if (branch.setMode) state.mode = branch.setMode;
+    state.replies.push(branch.reply);
+    if (branch.then) ask(branch.then, branch.reply);
+  };
+  let index = 0;
+  for (const action of script) {
+    index += 1;
+    if (action.mode) { state.mode = action.mode; continue; }
+    if ('yes' in action) { assert.ok(state.pending, `a yes or no needs a request to answer (action ${index}; last replies: ${state.replies.slice(-2).join(' / ')})`); answer(action.yes); continue; }
+    assert.ok(!state.pending, `typed "${action.say}" while a request was waiting`);
+    const move = E.capstone(step, action.say, context());
+    state.replies.push(move.reply);
+    if (move.type === 'ask') ask(move, move.reply);
+    else if (move.type === 'done') { state.effects.push(...move.effects); state.log.push({ goals: move.goals }); }
+  }
+  const goals = E.capstoneGoals(state.log, goalIds);
+  return { effects: state.effects, goals, all: Object.values(goals).every(Boolean), replies: state.replies, state, context };
+}
+
+const CAPSTONE_SOLUTION = [
+  { say: 'Make a web page' },
+  { yes: true },
+  { yes: false },
+  { say: 'Make the title green' },
+  { yes: true },
+  { say: 'Make the background blue' },
+  { yes: true },
+  { say: 'Add these rules to CLAUDE.md:\nHeadings are red.\nThe background is blue.\nAdd a footer that says Made by the club.' },
+  { yes: true },
+  { say: 'undo that' },
+  { mode: 'plan' },
+  { say: 'make the title bigger' },
+  { yes: true },
+  { yes: true }
+];
+
+test('level 6: the whole project can be done, and every goal is reached by the end', () => {
+  const played = playCapstone(cap, CAPSTONE_SOLUTION);
+  assert.deepStrictEqual(played.goals, { page: true, improve: true, rules: true, deny: true, undo: true, plan: true });
+  const world = E.replay(played.effects);
+  assert.ok(world.files.includes('index.html') && world.files.includes('CLAUDE.md'));
+  assert.deepStrictEqual(world.files.filter((f) => ['notes.txt', 'draft.txt', 'old.html'].includes(f)).length, 3, 'the old files were not deleted: the learner said no');
+});
+
+test('level 6: the goals can be done in a different order', () => {
+  const shuffled = [
+    { say: 'make a page' }, { yes: true }, { yes: false },
+    { say: 'Add these rules to CLAUDE.md: Headings are red; The background is blue; Add a footer that says Made by the club' }, { yes: true },
+    { mode: 'plan' }, { say: 'make the background green' }, { yes: true }, { yes: true },
+    { say: 'Make the title bigger' }, { yes: true },
+    { say: 'take that back' }
+  ];
+  const played = playCapstone(cap, shuffled);
+  assert.ok(played.all, JSON.stringify(played.goals));
+});
+
+test('level 6: nothing is checked by accident, and the order of goals is free', () => {
+  const none = playCapstone(cap, []);
+  assert.deepStrictEqual(Object.values(none.goals), [false, false, false, false, false, false]);
+  const onlyPage = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }]);
+  assert.deepStrictEqual(onlyPage.goals, { page: true, improve: false, rules: false, deny: true, undo: false, plan: false });
+});
+
+test('level 6: saying yes to something you did not ask for really does it, and the question comes back', () => {
+  const start = [{ say: 'make a web page' }, { yes: true }, { yes: true }];
+  const first = playCapstone(cap, start);
+  assert.ok(!E.replay(first.effects).files.includes('notes.txt'), 'notes.txt was deleted because the learner said yes');
+  assert.strictEqual(first.goals.deny, false, 'saying yes is not saying no');
+  assert.strictEqual(first.state.pending, null, 'the question comes back after the next edit, not at once');
+
+  const second = playCapstone(cap, [...start, { say: 'make the title green' }, { yes: true }]);
+  assert.match(second.state.pending.ask.question, /draft\.txt/, 'the next unwanted request is about the next old file');
+
+  const all = playCapstone(cap, [
+    ...start,
+    { say: 'make the title green' }, { yes: true }, { yes: true },
+    { say: 'make the title blue' }, { yes: true }, { yes: true },
+    { say: 'make the title bigger' }, { yes: true }
+  ]);
+  const files = E.replay(all.effects).files;
+  assert.ok(!files.includes('draft.txt') && !files.includes('old.html'), 'every old file was deleted by yes answers');
+  assert.match(all.state.pending.ask.question, /index\.html/, 'when the old files are gone, it asks about the learner\'s own file');
+  const refused = playCapstone(cap, [
+    ...start,
+    { say: 'make the title green' }, { yes: true }, { yes: true },
+    { say: 'make the title blue' }, { yes: true }, { yes: true },
+    { say: 'make the title bigger' }, { yes: true }, { yes: false }
+  ]);
+  assert.strictEqual(refused.goals.deny, true, 'it is always possible to say no');
+  assert.ok(E.replay(refused.effects).files.includes('index.html'), 'and the learner\'s page is still there');
+});
+
+test('level 6: two changes count only when they are different', () => {
+  const sameTwice = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }, { say: 'make the title green' }, { yes: true }, { say: 'make the title blue' }, { yes: true }]);
+  assert.strictEqual(sameTwice.goals.improve, false, 'the title color twice is one improvement');
+  const different = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }, { say: 'make the title green' }, { yes: true }, { say: 'make the title bigger' }, { yes: true }]);
+  assert.strictEqual(different.goals.improve, true);
+});
+
+test('level 6: three rules are needed, and they can be saved a line at a time', () => {
+  const slow = playCapstone(cap, [
+    { say: 'make a web page' }, { yes: true }, { yes: false },
+    { say: 'Rule: headings are green' }, { yes: true },
+    { say: 'Rule: the background is blue' }, { yes: true }
+  ]);
+  assert.strictEqual(slow.goals.rules, false, 'two rules are not enough');
+  const third = playCapstone(cap, [
+    { say: 'make a web page' }, { yes: true }, { yes: false },
+    { say: 'Rule: headings are green' }, { yes: true },
+    { say: 'Rule: the background is blue' }, { yes: true },
+    { say: 'Rule: add a footer that says Made by the club' }, { yes: true }
+  ]);
+  assert.strictEqual(third.goals.rules, true);
+  assert.deepStrictEqual(E.replay(third.effects).ruleLines.length, 3, 'the rulebook keeps every line');
+  const same = playCapstone(cap, [
+    { say: 'make a web page' }, { yes: true }, { yes: false },
+    { say: 'Rule: headings are green' }, { yes: true },
+    { say: 'Rule: headings are red' }, { yes: true },
+    { say: 'Rule: headings are blue' }, { yes: true }
+  ]);
+  assert.strictEqual(same.goals.rules, false, 'three rules about the same thing are one topic');
+});
+
+test('level 6: every mistake gets an answer that says what to try, and changes nothing', () => {
+  const reply = (text, mode, setup) => {
+    const played = playCapstone(cap, [...(setup || []), { mode: mode || 'manual' }]);
+    const move = E.capstone(cap, text, played.context());
+    return move;
+  };
+  const withPage = [{ say: 'make a web page' }, { yes: true }, { yes: false }];
+  const cases = [
+    ['', null, [], 'empty'],
+    ['make the title green', null, [], 'noPageYet'],
+    ['undo that', null, [], 'nothingToUndo'],
+    ['make a web page', null, withPage, 'pageExists'],
+    ['make it better', null, withPage, 'vague'],
+    ['change the title', null, withPage, 'needHow'],
+    ['make it green', null, withPage, 'needPart'],
+    ['make the background bigger', null, withPage, 'badCombo'],
+    ['Rule: make it nice', null, withPage, 'vagueRule'],
+    ['xyzzy plugh', null, withPage, 'notUnderstood'],
+    ['Rule: headings are green', 'plan', withPage, 'planNoEdit'],
+    ['undo that', 'plan', withPage, 'planNoEdit']
+  ];
+  for (const [text, mode, setup, key] of cases) {
+    const move = reply(text, mode, setup);
+    assert.strictEqual(move.type, 'hint', `"${text}" (${mode || 'manual'})`);
+    const expected = cap.messages[key].replace('{line}', '1').replace('{text}', text).replace('{part}', 'title');
+    assert.strictEqual(move.reply, expected, `"${text}" should give "${key}"`);
+    assert.ok(!move.effects && !move.ask, 'a mistake changes nothing and asks nothing');
+  }
+});
+
+test('level 6: in Plan mode every request becomes a plan first, and nothing changes until approved', () => {
+  const played = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }, { mode: 'plan' }, { say: 'make the title green' }]);
+  const move = played.state.pending;
+  assert.ok(move.plan && move.plan.items.length === 3);
+  assert.strictEqual(move.ask.yesLabel, 'Yes, manually approve edits');
+  assert.strictEqual(E.replay(played.effects).view.page.color, 'ink', 'the plan has not changed the page');
+  const no = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }, { mode: 'plan' }, { say: 'make the title green' }, { yes: false }]);
+  assert.strictEqual(no.goals.plan, false, 'discarding a plan is not approving it');
+  assert.strictEqual(E.replay(no.effects).view.page.color, 'ink');
+  const yes = playCapstone(cap, [{ say: 'make a web page' }, { yes: true }, { yes: false }, { mode: 'plan' }, { say: 'make the title green' }, { yes: true }]);
+  assert.strictEqual(yes.state.mode, 'manual', 'approving a plan leaves Plan mode');
+  assert.match(yes.state.pending.ask.question, /May I change/, 'and the first edit is still asked');
+});
+
+test('level 6: the same typing on the same board always gives the same answer', () => {
+  const a = playCapstone(cap, CAPSTONE_SOLUTION);
+  const b = playCapstone(cap, CAPSTONE_SOLUTION);
+  assert.deepStrictEqual(a.replies, b.replies);
+  assert.deepStrictEqual(a.effects, b.effects);
+});
+
 /* ---------- A whole game, played by the engine ---------- */
 
 test('every level can be finished from start to end, step by step, by the engine alone', () => {
@@ -429,6 +692,10 @@ test('every level can be finished from start to end, step by step, by the engine
       const world = () => E.replay(effects);
       if (step.kind === 'question') {
         assert.strictEqual(E.answer(step, answers[key]).right, true, key);
+      } else if (step.kind === 'capstone') {
+        const played = playCapstone(step, answers[key], effects);
+        assert.ok(played.all, `${key}: not every goal was reached: ${JSON.stringify(played.goals)}`);
+        effects = played.effects;
       } else if (step.kind === 'review') {
         step.events.forEach((_, i) => {
           const event = E.reviewEvent(step, variant, i);
@@ -444,7 +711,7 @@ test('every level can be finished from start to end, step by step, by the engine
         });
       } else {
         const res = E.announce(step, variant, answers[key], { rules: world().rules });
-        assert.ok(['ask', 'done'].includes(res.type), `${key}: ${res.outcome}`);
+        assert.ok(['ask', 'done', 'plan'].includes(res.type), `${key}: ${res.outcome}`);
         assert.strictEqual(res.completes, true, key);
         effects.push(...res.effects);
       }
@@ -478,7 +745,18 @@ test('every level can be finished from start to end, step by step, by the engine
     '4.why': 'a'
   });
   assert.strictEqual(l4.view.page.color, 'ink');
-  assert.strictEqual(solved.length, 4 + 4 + 5 + 6, 'every step of every level was played');
+  const l5 = run(5, {
+    '5.mode': { mode: 'plan' },
+    '5.ask': 'Plan a schedule page',
+    '5.edit': ['remove step 4'],
+    '5.approve': ['yes', 'yes'],
+    '5.check': ['plan a contact page', 'I do not want the map', 'yes', 'yes'],
+    '5.why': 'a'
+  });
+  assert.deepStrictEqual(l5.files, ['index.html', 'schedule.html', 'contact.html'].filter((f) => l5.files.includes(f)));
+  const l6 = run(6, { '6.build': CAPSTONE_SOLUTION, '6.why': 'a' });
+  assert.ok(l6.files.includes('CLAUDE.md') && l6.files.includes('index.html'));
+  assert.strictEqual(solved.length, 4 + 4 + 5 + 6 + 6 + 2, 'every step of every level was played');
 });
 
 test('replay tells which files a move made new and which it changed', () => {

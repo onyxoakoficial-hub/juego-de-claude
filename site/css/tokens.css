@@ -265,6 +265,8 @@
   --map-max: 27rem;
   --piece-scale: 78%;
   --preview-min: 9rem;
+  --piece-cert: 6rem;
+  --list-n: 2rem;
 
   /* Radius: one scale. Small radii keep the set formal. */
   --r-1: 0.125rem;

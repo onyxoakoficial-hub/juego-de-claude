@@ -60,14 +60,22 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
 - Finishing steps never passes a level. Only a clean check followed by the right answer to the question
   calls `markPassed`. Level N opens only when level N-1 is passed. The address bar cannot skip ahead.
 - Variants come in a fixed order and wrap around. There is no randomness anywhere.
-- A level is data in `site/content/en.js` (steps, rules, outcomes, hints, recap). Adding level 5 or 6
-  means adding data; `tests/content.test.js` checks it automatically, and `tests/engine.test.js` plays
-  every level from start to end with the engine alone.
+- A level is data in its own file, `site/content/en-level-N.js` (steps, rules, outcomes, hints, recap).
+  `site/content/en.js` holds the core (the landing demo, the interface strings, the level list and what
+  levels share). Each entry of `levelList` names the files that level needs, and `js/play.js` loads them
+  only when the learner opens that level. `tests/content.test.js` checks every level automatically, and
+  `tests/engine.test.js` plays every level from start to end with the engine alone.
 - Step kinds: `build` (word tiles, levels 1 and 2 and the mode picker), `type` (one typed line),
-  `rules` (a typed rulebook, one rule per line), `review` (several requests answered yes or no, plus a
-  typed one) and `question`. Typed answers are matched forgivingly: case, punctuation, word order, extra
+  `rules` (a typed rulebook, one rule per line), `review` (several requests answered yes or no, plus typed
+  ones, with an optional plan card), `capstone` (level 6: a free session with six goals, in
+  `js/capstone.js`) and `question`. An answer may be a `plan` (a numbered plan card, nothing edited). Typed answers are matched forgivingly: case, punctuation, word order, extra
   words and one-letter typos (including swapped letters) in words of five letters or more.
 - Levels 1 and 2 use tiles. From level 3 the learner types; a hint is the way back to tiles and examples.
+- Level 6 has no hints at all. Its mistakes say what kind of thing to try, never the answer
+  (`tests/content.test.js` fails if a message gives one away).
+- The end screen (`#done`, opens only after level 6 is passed) is `content/en-finale.js` + `js/finale.js`:
+  a completion card the learner can download as a picture, copy as text or share, and the checklist
+  "Your first real session".
 - A step may set the board it starts from (`board`), so a level can resume in the middle.
 
 ## Game rules
@@ -98,7 +106,9 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
 - No third-party scripts, trackers, analytics, CDNs or embeds. Fonts and all assets are self-hosted.
 - No inline scripts, inline styles or event attributes in HTML.
 - Text the learner types is shown with `textContent` only, never inserted as HTML.
-- Game and lesson text lives in `site/content/en.js`. Logic files contain no wording.
+- Game and lesson text lives in `site/content/` (`en.js`, `en-level-N.js`, `en-finale.js`). Logic files
+  contain no wording. Approved change (owner, M4): the lesson data is split by level to keep each page
+  under the JavaScript budget.
 - Approved exception (owner, M2): the static copy of the landing page (`index.html`) stays in the HTML,
   not in `en.js`, so it can be read without JavaScript and paints first. To add a language, translate
   `en.js` and the HTML pages.
@@ -110,9 +120,11 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
   price before proposing one.
 - Mobile first from 360 px. Full keyboard support. WCAG 2.2 AA. Light and dark themes.
   `prefers-reduced-motion` is respected.
-- Budgets: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less, under 100 KB of JavaScript on every
-  page (raw size of the scripts that page loads; `tests/site.test.js` checks it), Lighthouse 95 or more in
-  every category. `site/content/facts.js` is data for editing and tests; no page loads it.
+- Budgets: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less, Lighthouse 95 or more in every
+  category, and under 100 KB of JavaScript (raw) on every page and route: the scripts the page loads plus
+  the heaviest level or the end screen (`tests/site.test.js` checks it). The compressed size is reported
+  for information only. Opening several levels in one visit loads more than 100 KB raw in total; that is
+  known and accepted. `site/content/facts.js` is data for editing and tests; no page loads it.
 
 ## Design
 
@@ -129,6 +141,9 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
 - This is an independent, unofficial project. The product is named "Checkmate" only.
 - Write "Claude Code" in plain text to describe what the game teaches. Never use its logo, never imitate
   Anthropic's branding, never put a trademark symbol next to its names.
+- The end screen's card and checklist state only facts from the official documentation, each with its
+  page (`content/facts.js`, group `finale`), no prices, and nothing about undo in the desktop app.
+  The name a learner types on the card is never saved or sent.
 - Every page ends with: "Independent, unofficial project. Not affiliated with or endorsed by Anthropic.
   Claude Code is a trademark of Anthropic, PBC."
 - No invented reviews, numbers, credentials or urgency. Every claim on a page must be true today.
@@ -144,6 +159,12 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
   assistant changes the file that is already there (it says "existing file", and the board and preview
   mark files as "new" or "changed" in levels 2 to 4).
 
+- Not verified, so handled with care (M4): (1) the exact wording of the plan-approval buttons in the
+  desktop app: the documentation lists them for the prompt that appears when a plan is ready, and the
+  first option reads differently when Auto mode is unavailable, so the game shows two of them and says the
+  wording can differ between versions; (2) how to undo in the desktop app (still not tested by the owner,
+  so not taught); (3) LCP of the level page is near the limit in lab tests.
+
 ## Evidence from people
 
 - Level 1, owner test (M3): one person who had never programmed finished it alone in about 2 minutes,
@@ -151,7 +172,11 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
   said the assistant "puso en la pantalla lo que yo escribí".
 - Still to do: the 5-second test of the landing page, and level 3 with a beginner.
 
-## Owner decisions on code (M3)
+## Owner decisions on code (M3 and M4)
+
+- M4: lesson data is split by level (budget measured raw per route); compressed size is information only.
+- M4: the level map keeps showing six pieces, and the level 4 recap keeps naming the Queen.
+- M4: the landing page names the six levels now that they exist and work.
 
 - `site/js/first-win.js` (landing demo) stays separate from `site/js/engine.js`. The duplication is accepted.
 - The browser test scripts (they need Playwright) stay outside the repository. `node --test` is the

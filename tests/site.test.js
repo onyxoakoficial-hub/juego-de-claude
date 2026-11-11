@@ -25,7 +25,7 @@ const read = (file) => fs.readFileSync(file, 'utf8');
 const rel = (file) => path.relative(SITE, file);
 const pages = files.filter((file) => file.endsWith('.html'));
 
-require(path.join(SITE, 'content', 'en.js'));
+require('./helpers/content').loadContent();
 require(path.join(SITE, 'content', 'facts.js'));
 const { facts } = globalThis.CHECKMATE;
 
@@ -180,19 +180,41 @@ test('fonts ship with their licences', () => {
   }
 });
 
-test('size budget: every page loads under 100 KB of JavaScript and a light first load', () => {
+test('size budget: every page and route loads under 100 KB of JavaScript (raw), and a light first load', () => {
   const zlib = require('zlib');
+  const sizeOf = (list, packed) => list.reduce((sum, f) => sum + (packed ? zlib.gzipSync(fs.readFileSync(f), { level: 9 }).length : fs.statSync(f).size), 0);
   const rows = [];
+
   for (const page of pages) {
     const html = read(page);
     const scripts = [...html.matchAll(/<script[^>]*\bsrc="([^"]+)"/g)].map((m) => path.join(path.dirname(page), m[1]));
-    const raw = scripts.reduce((sum, f) => sum + fs.statSync(f).size, 0);
-    const packed = scripts.reduce((sum, f) => sum + zlib.gzipSync(fs.readFileSync(f), { level: 9 }).length, 0);
-    const everything = [page, ...scripts, ...[...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => path.join(path.dirname(page), m[1]))]
-      .reduce((sum, f) => sum + fs.statSync(f).size, 0) + files.filter((f) => /\.(woff2|png)$/.test(f)).reduce((sum, f) => sum + fs.statSync(f).size, 0);
-    rows.push(`${rel(page)}: JavaScript ${(raw / 1024).toFixed(1)} KB raw, ${(packed / 1024).toFixed(1)} KB compressed; whole page ${(everything / 1024).toFixed(0)} KB raw`);
-    assert.ok(raw < 100 * 1024, `${rel(page)} loads ${raw} bytes of JavaScript`);
-    assert.ok(everything < 1024 * 1024, `${rel(page)} loads ${everything} bytes in total`);
+    const base = sizeOf(scripts);
+
+    /* Routes that load more files when opened: one level, or the end screen. The level page loads them on demand. */
+    const routes = [];
+    if (rel(page) === 'play.html') {
+      const meta = globalThis.CHECKMATE.content.levelList;
+      for (const level of meta) routes.push([`level ${level.id}`, level.files.map((f) => path.join(SITE, f))]);
+      routes.push(['the end screen', ['content/en-finale.js', 'js/finale.js'].map((f) => path.join(SITE, f))]);
+    }
+    const all = [...new Set(routes.flatMap(([, list]) => list))];
+    let worst = ['the page itself', 0];
+    for (const [name, list] of routes) {
+      const extra = sizeOf(list);
+      if (extra > worst[1]) worst = [name, extra];
+      assert.ok(base + extra < 100 * 1024, `${rel(page)} + ${name}: ${base + extra} bytes of JavaScript`);
+    }
+    assert.ok(base < 100 * 1024, `${rel(page)} loads ${base} bytes of JavaScript`);
+
+    const css = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => path.join(path.dirname(page), m[1]));
+    const media = files.filter((f) => /\.(woff2|png)$/.test(f));
+    const whole = sizeOf([page, ...scripts, ...all, ...css, ...media]);
+    assert.ok(whole < 1024 * 1024, `${rel(page)} loads ${whole} bytes in total`);
+
+    rows.push(
+      `${rel(page)}: JavaScript on first load ${(base / 1024).toFixed(1)} KB raw; heaviest route (${worst[0]}) ${((base + worst[1]) / 1024).toFixed(1)} KB raw; ` +
+        `everything opened in one visit ${((base + sizeOf(all)) / 1024).toFixed(1)} KB raw, ${((sizeOf(scripts, true) + sizeOf(all, true)) / 1024).toFixed(1)} KB compressed (information only)`
+    );
   }
   console.log(rows.join('\n'));
 });
@@ -217,7 +239,13 @@ test('the landing page promises only levels that exist', () => {
   for (const word of numbers.filter((_, i) => i + 1 > builtIds.length && i + 1 <= 6)) {
     assert.ok(!new RegExp(`\\b${word}\\s+(?:short\\s+)?(?:levels|pieces|skills|lessons)\\b`, 'i').test(html), `the landing page says "${word}" levels, but only ${builtIds.length} exist`);
   }
-  assert.ok(!/first real session|plan before anything/i.test(body), 'the landing page promises a part that does not exist yet');
+  if (builtIds.length < list.length) {
+    assert.ok(!/first real session|plan before anything/i.test(body), 'the landing page promises a part that does not exist yet');
+  } else {
+    /* Everything exists: the landing page may promise the plan level and the checklist, and then they must work. */
+    for (const file of ['content/en-finale.js', 'js/finale.js']) assert.ok(fs.existsSync(path.join(SITE, file)), `${file} is needed for the promised checklist`);
+    assert.ok(/six/i.test(body), 'the landing page should say six levels once all six exist');
+  }
 });
 
 test('the lessons that change a file say so: levels 2 to 4 show what is new and what is changed', () => {

@@ -122,6 +122,7 @@
               <p data-card-blurb></p>
               <p class="levelcard__status" data-card-status></p>
               <a class="btn btn--primary" data-card-play href="#1"></a>
+              <a class="btn btn--secondary" data-done-link href="#done" hidden></a>
             </div>
             <div class="notice">
               <p class="fine" data-privacy></p>
@@ -142,6 +143,11 @@
         </div>
       </section>
 
+      <!-- The end: the completion card and the first-real-session checklist -->
+      <section data-view="finale" hidden aria-label="The end">
+        <div data-finale></div>
+      </section>
+
       <!-- One level -->
       <section data-view="level" hidden aria-label="Level">
         <div class="grid">
@@ -155,6 +161,18 @@
 
             <p class="stage__context" data-context></p>
             <p class="stage__task" id="lv-task" data-task></p>
+
+            <div class="capstone" data-capstone hidden>
+              <div class="goals">
+                <p class="label label--muted" id="lv-goals-label" data-goals-label></p>
+                <ul class="goals__list" aria-labelledby="lv-goals-label" data-goals-list></ul>
+                <p class="fine" role="status" data-goals-progress></p>
+              </div>
+              <div class="modes" role="group" aria-labelledby="lv-mode-label">
+                <span class="label label--muted" id="lv-mode-label" data-mode-label></span>
+                <div class="chips" data-mode-chips></div>
+              </div>
+            </div>
 
             <div class="stage__build" data-build>
               <div class="say" role="group" aria-labelledby="lv-say-label">
@@ -188,10 +206,15 @@
               <p class="reply__text" data-reply-text></p>
             </div>
 
+            <div class="plan" data-plan hidden>
+              <p class="label" data-plan-title></p>
+              <ol class="plan__list" data-plan-list></ol>
+            </div>
+
             <div class="ask" data-ask role="group" aria-labelledby="lv-ask-title lv-ask-question" tabindex="-1" hidden>
               <p class="label" id="lv-ask-title" data-ask-title></p>
               <p class="ask__question" id="lv-ask-question" data-ask-question></p>
-              <p class="ask__change"><span aria-hidden="true" data-ask-mark>+</span> <code data-ask-file></code> <span data-ask-kind></span></p>
+              <p class="ask__change" data-ask-change><span aria-hidden="true" data-ask-mark>+</span> <code data-ask-file></code> <span data-ask-kind></span></p>
               <div class="ask__buttons">
                 <button type="button" class="btn btn--primary" data-yes></button>
                 <button type="button" class="btn btn--secondary" data-no></button>
@@ -225,6 +248,7 @@
                 <p class="recap__next" data-recap-next></p>
               </div>
               <div class="win__actions">
+                <a class="btn btn--primary" href="#done" data-recap-done hidden></a>
                 <a class="btn btn--primary" href="#map" data-recap-map></a>
               </div>
             </div>
