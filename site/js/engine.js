@@ -14,16 +14,47 @@
   var STORAGE_KEY = 'checkmate-progress';
   var STORAGE_VERSION = 1;
 
-  /* ---------- Matching ---------- */
+  /* ---------- Small helpers ---------- */
+
+  /* Put values into a sentence: "{words}" becomes the value of vars.words. */
+  function fill(template, vars) {
+    var out = String(template === undefined || template === null ? '' : template);
+    var keys = Object.keys(vars || {});
+    for (var i = 0; i < keys.length; i += 1) {
+      var value = vars[keys[i]];
+      if (typeof value === 'object') continue;
+      out = out.split('{' + keys[i] + '}').join(String(value));
+    }
+    return out;
+  }
+
+  function fillDeep(value, vars) {
+    if (typeof value === 'string') return fill(value, vars);
+    if (Array.isArray(value)) return value.map(function (item) { return fillDeep(item, vars); });
+    if (value && typeof value === 'object') {
+      var out = {};
+      Object.keys(value).forEach(function (key) { out[key] = fillDeep(value[key], vars); });
+      return out;
+    }
+    return value;
+  }
+
+  /* ---------- Tiles ---------- */
+
+  /* A tile can name a value from the variant: "$part" means "whatever this variant asks for". */
+  function resolve(wanted, variant) {
+    if (typeof wanted === 'string' && wanted.charAt(0) === '$') return variant ? variant[wanted.slice(1)] : undefined;
+    return wanted;
+  }
 
   /*
     selection: { groupId: optionId | null }
-    when:      { groupId: null (nothing chosen) | 'optionId' (that tile) }, a group left out means anything
+    when:      { groupId: null (nothing chosen) | 'optionId' | '$variantKey' }, a group left out means anything
   */
-  function ruleMatches(when, selection) {
+  function ruleMatches(when, selection, variant) {
     var keys = Object.keys(when || {});
     for (var i = 0; i < keys.length; i += 1) {
-      var wanted = when[keys[i]];
+      var wanted = resolve(when[keys[i]], variant);
       var chosen = selection && selection[keys[i]] !== undefined ? selection[keys[i]] : null;
       if (wanted === null ? chosen !== null : chosen !== wanted) return false;
     }
@@ -31,22 +62,12 @@
   }
 
   /* The key of the first rule that matches, or 'empty' when nothing does. */
-  function evaluate(step, selection) {
+  function evaluate(step, selection, variant) {
     var rules = step.rules || [];
     for (var i = 0; i < rules.length; i += 1) {
-      if (ruleMatches(rules[i].when, selection)) return rules[i].outcome;
+      if (ruleMatches(rules[i].when, selection, variant)) return rules[i].outcome;
     }
     return 'empty';
-  }
-
-  /* Put values into a sentence: "{words}" becomes the value of vars.words. */
-  function fill(template, vars) {
-    var out = String(template === undefined || template === null ? '' : template);
-    var keys = Object.keys(vars || {});
-    for (var i = 0; i < keys.length; i += 1) {
-      out = out.split('{' + keys[i] + '}').join(String(vars[keys[i]]));
-    }
-    return out;
   }
 
   /* Variants come in a fixed order. Each repeat of a check moves to the next one. */
@@ -80,30 +101,241 @@
     return parts.join(' ');
   }
 
-  /* ---------- Step flow ---------- */
+  /* ---------- Free text ---------- */
+
+  function normalize(text) {
+    return String(text === undefined || text === null ? '' : text)
+      .toLowerCase()
+      .replace(/[‘’“”"']/g, ' ')
+      .replace(/[^a-z0-9\/\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function words(text) {
+    var clean = normalize(text);
+    return clean ? clean.split(' ') : [];
+  }
+
+  /* Edit distance where swapping two neighbouring letters counts as one slip (the commonest typo). */
+  function editDistance(a, b) {
+    var table = [];
+    var i;
+    var j;
+    for (i = 0; i <= a.length; i += 1) {
+      table.push([i]);
+    }
+    for (j = 1; j <= b.length; j += 1) table[0][j] = j;
+    for (i = 1; i <= a.length; i += 1) {
+      for (j = 1; j <= b.length; j += 1) {
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        table[i][j] = Math.min(table[i - 1][j] + 1, table[i][j - 1] + 1, table[i - 1][j - 1] + cost);
+        if (i > 1 && j > 1 && a.charAt(i - 1) === b.charAt(j - 2) && a.charAt(i - 2) === b.charAt(j - 1)) {
+          table[i][j] = Math.min(table[i][j], table[i - 2][j - 2] + 1);
+        }
+      }
+    }
+    return table[a.length][b.length];
+  }
+
+  /* Forgiving: the same word, or a word of 5+ letters with one slip (a typo). */
+  function near(word, target) {
+    if (word === target) return true;
+    if (word.length < 5 || target.length < 5) return false;
+    return editDistance(word, target) <= 1;
+  }
+
+  function hasAny(list, targets) {
+    for (var i = 0; i < list.length; i += 1) {
+      for (var j = 0; j < targets.length; j += 1) {
+        if (near(list[i], targets[j])) return true;
+      }
+    }
+    return false;
+  }
 
   /*
-    What happens when the learner announces a move.
-    Returns { outcome, type, reply, ask, effect, completes, verdict }
-    type is 'hint' (the assistant coaches, nothing to approve) or 'ask' (the assistant asks permission).
+    when: { empty: true } | { all: [[a, b], [c]], none: [[d]] }
+    "all": every list needs at least one of its words. "none": no list may have any of its words.
   */
-  function announce(step, variant, selection) {
-    var key = evaluate(step, selection);
-    var spec = (step.outcomes && step.outcomes[key]) || {};
-    var vars = variant || {};
+  function textMatches(when, text) {
+    var list = words(text);
+    if (when && when.empty) return list.length === 0;
+    var all = (when && when.all) || [];
+    var none = (when && when.none) || [];
+    for (var i = 0; i < all.length; i += 1) if (!hasAny(list, all[i])) return false;
+    for (var j = 0; j < none.length; j += 1) if (hasAny(list, none[j])) return false;
+    return true;
+  }
+
+  function evaluateText(step, text) {
+    var rules = step.rules || [];
+    for (var i = 0; i < rules.length; i += 1) {
+      if (textMatches(rules[i].when, text)) return rules[i].outcome;
+    }
+    return 'empty';
+  }
+
+  /* ---------- The rulebook (CLAUDE.md) ---------- */
+
+  function splitLines(text) {
+    return String(text === undefined || text === null ? '' : text)
+      .split(/\n|;/)
+      .map(function (line) { return line.replace(/^[\s\-\*•\d.)]+/, '').trim(); })
+      .filter(Boolean);
+  }
+
+  function classifyLine(step, line) {
+    var cats = step.categories || [];
+    for (var i = 0; i < cats.length; i += 1) {
+      if (textMatches(cats[i].when, line)) return cats[i];
+    }
+    return null;
+  }
+
+  function firstValue(list, values) {
+    var names = Object.keys(values);
+    for (var i = 0; i < list.length; i += 1) {
+      for (var j = 0; j < names.length; j += 1) {
+        if (near(list[i], names[j])) return values[names[j]];
+      }
+    }
+    return null;
+  }
+
+  function ruleValue(cat, line) {
+    if (cat.values) {
+      var list = words(line);
+      /* "green on a blue background": the color that belongs to the keyword is the one after it. */
+      if (cat.after) {
+        for (var k = 0; k < list.length; k += 1) {
+          if (hasAny([list[k]], cat.after)) {
+            var later = firstValue(list.slice(k + 1), cat.values);
+            if (later !== null) return later;
+            var earlier = k > 0 ? firstValue([list[k - 1]], cat.values) : null;
+            if (earlier !== null) return earlier;
+            break;
+          }
+        }
+      }
+      var found = firstValue(list, cat.values);
+      if (found !== null) return found;
+    }
+    if (cat.text) {
+      var quoted = /[“"]([^“”"]{2,60})[”"]/.exec(line);
+      if (quoted) return quoted[1].trim();
+      var said = /\bsays?\s+(.{2,60})$/i.exec(line);
+      if (said) return said[1].replace(/[\s.!?]+$/, '').trim();
+      return cat.text;
+    }
+    return '';
+  }
+
+  /* Reads a rulebook: which line is too vague, which topic is missing, or the rules it holds. */
+  function readRulebook(step, variant, text) {
+    var lines = splitLines(text);
+    if (!lines.length) return { outcome: 'empty', lines: [], rules: [] };
+
+    var rules = [];
+    var covered = {};
+    for (var i = 0; i < lines.length; i += 1) {
+      var cat = classifyLine(step, lines[i]);
+      if (!cat) return { outcome: 'vague', lines: lines, rules: rules, vars: { line: i + 1, text: lines[i] } };
+      rules.push({ cat: cat.id, value: ruleValue(cat, lines[i]) });
+      covered[cat.id] = true;
+    }
+
+    var need = (variant && variant.need) || step.need || [];
+    for (var n = 0; n < need.length; n += 1) {
+      if (!covered[need[n]]) {
+        var missing = (step.categories || []).filter(function (c) { return c.id === need[n]; })[0];
+        return { outcome: 'missing', lines: lines, rules: rules, vars: { topic: missing ? missing.topic : need[n] } };
+      }
+    }
+    return { outcome: 'good', lines: lines, rules: rules };
+  }
+
+  /* A page with no rules, and what each kind of rule changes in it. */
+  var BASE_VIEW = { text: 'Chess Club', color: 'ink', bg: 'paper', size: 'normal', footer: '' };
+
+  function rulesToSet(rules) {
+    var set = {};
+    (rules || []).forEach(function (rule) {
+      if (rule.cat === 'color') set.color = rule.value;
+      if (rule.cat === 'background') set.bg = rule.value;
+      if (rule.cat === 'size') set.size = rule.value;
+      if (rule.cat === 'footer') set.footer = rule.value;
+    });
+    return set;
+  }
+
+  /* ---------- Moves ---------- */
+
+  /* Turns the effect templates of an outcome into real effects. */
+  function buildEffects(spec, variant, context) {
+    var templates = spec.effects || (spec.effect ? [spec.effect] : []);
+    return templates.map(function (template) {
+      var effect = { kind: template.kind };
+      if (template.file !== undefined) effect.file = fill(template.file, variant);
+      if (template.text !== undefined) effect.text = fill(template.text, variant);
+      if (template.kind === 'page') {
+        var set = template.set === 'variant' ? fillDeep((variant && variant.set) || {}, variant) : fillDeep(template.set || {}, variant);
+        if (template.applyRules) set = Object.assign({}, rulesToSet(context.rules), set);
+        effect.set = set;
+      }
+      if (template.kind === 'rulebook') {
+        effect.lines = context.lines || [];
+        effect.rules = context.rules || [];
+      }
+      return effect;
+    });
+  }
+
+  function result(key, spec, variant, context) {
+    var vars = Object.assign({}, variant || {}, context.vars || {});
+    var effects = buildEffects(spec, variant, context);
     return {
       outcome: key,
       type: spec.type || 'hint',
       reply: fill(spec.reply, vars),
       ask: spec.ask
-        ? { question: fill(spec.ask.question, vars), file: fill(spec.ask.file, vars) }
+        ? {
+            question: fill(spec.ask.question, vars),
+            file: fill(spec.ask.file, vars),
+            mark: spec.ask.mark || '+',
+            change: spec.ask.change || 'new file'
+          }
         : null,
-      effect: spec.effect
-        ? { kind: spec.effect.kind, file: fill(spec.effect.file, vars), text: fill(spec.effect.text, vars) }
-        : null,
+      effect: effects[0] || null,
+      effects: effects,
       completes: Boolean(spec.completes),
       verdict: fill(spec.verdict, vars)
     };
+  }
+
+  /*
+    What happens when the learner announces a move.
+    input: the tile selection (build), or the typed text (type, rules).
+    context: { rules } the rules already in the rulebook.
+    Returns { outcome, type, reply, ask, effect, effects, completes, verdict }.
+    type is 'hint' (the assistant coaches), 'ask' (it asks permission) or 'done' (it just does it).
+  */
+  function announce(step, variant, input, context) {
+    var ctx = Object.assign({ rules: [] }, context || {});
+    var key;
+    if (step.kind === 'type') {
+      key = evaluateText(step, input);
+    } else if (step.kind === 'rules') {
+      var read = readRulebook(step, variant, input);
+      key = read.outcome;
+      ctx.lines = read.lines;
+      ctx.vars = read.vars;
+      ctx.rules = read.outcome === 'good' ? read.rules : ctx.rules;
+    } else {
+      key = evaluate(step, input, variant);
+    }
+    var spec = (step.outcomes && step.outcomes[key]) || {};
+    return result(key, spec, variant, ctx);
   }
 
   /* Check an answer to a multiple-choice question. */
@@ -116,6 +348,23 @@
     return { right: Boolean(option.right), why: option.right ? step.rightWhy || '' : option.why || '' };
   }
 
+  /* A review step is a list of requests. This gives request i with the variant's words filled in. */
+  function reviewEvent(step, variant, i) {
+    var event = (step.events || [])[i];
+    return event ? fillDeep(event, variant) : null;
+  }
+
+  /* The learner answers a permission request in a review: yes or no. */
+  function reviewAnswer(event, choice) {
+    var right = choice === event.correct;
+    if (!right) return { right: false, reply: event.wrongReply, effects: [] };
+    return {
+      right: true,
+      reply: choice === 'yes' ? event.yesReply : event.noReply,
+      effects: choice === 'yes' ? event.yesEffects || [] : []
+    };
+  }
+
   /*
     The mastery rule for a check step.
     A check counts only when no hint was used during it. If one was, the check is repeated with the next variant.
@@ -124,17 +373,57 @@
     return hintsUsedInCheck > 0 ? 'repeat' : 'clean';
   }
 
-  /* The files on the board after a list of moves (each file once, in the order made). */
-  function boardFiles(effects) {
-    var seen = {};
-    var out = [];
-    effects.forEach(function (effect) {
-      if (effect && effect.file && !seen[effect.file]) {
-        seen[effect.file] = true;
-        out.push(effect.file);
+  /* ---------- The board ---------- */
+
+  /*
+    Replays what has happened, move by move.
+    Returns { files, view, before, after, text, rules }:
+      files   the files on the board
+      view    what the preview shows: { kind: 'page'|'note'|'rulebook'|'none', file, ... }
+      before  the page as it was before the last change to it, or null
+  */
+  function replay(effects) {
+    var files = [];
+    var stacks = {};
+    var rules = [];
+    var current = { kind: 'none' };
+
+    function add(file) {
+      if (file && files.indexOf(file) === -1) files.push(file);
+    }
+
+    (effects || []).forEach(function (effect) {
+      if (!effect) return;
+      if (effect.kind === 'page') {
+        var stack = stacks[effect.file] || [];
+        var previous = stack.length ? stack[stack.length - 1] : null;
+        var next = Object.assign({}, previous || BASE_VIEW, effect.set || {});
+        if (effect.text !== undefined) next.text = effect.text;
+        stack.push(next);
+        stacks[effect.file] = stack;
+        add(effect.file);
+        current = { kind: 'page', file: effect.file, page: next, before: previous };
+      } else if (effect.kind === 'note') {
+        add(effect.file);
+        current = { kind: 'note', file: effect.file, text: effect.text };
+      } else if (effect.kind === 'rulebook') {
+        add(effect.file);
+        rules = effect.rules || [];
+        current = { kind: 'rulebook', file: effect.file, lines: effect.lines || [] };
+      } else if (effect.kind === 'delete') {
+        files = files.filter(function (file) { return file !== effect.file; });
+        delete stacks[effect.file];
+        current = { kind: 'none' };
+      } else if (effect.kind === 'undo') {
+        var pile = stacks[effect.file] || [];
+        if (pile.length > 1) {
+          var undone = pile.pop();
+          current = { kind: 'page', file: effect.file, page: pile[pile.length - 1], before: undone };
+        }
       }
     });
-    return out;
+
+    return { files: files, view: current, rules: rules };
   }
 
   /* ---------- Progress ---------- */
@@ -230,16 +519,25 @@
 
   app.engine = {
     STORAGE_KEY: STORAGE_KEY,
+    BASE_VIEW: BASE_VIEW,
+    fill: fill,
+    fillDeep: fillDeep,
     ruleMatches: ruleMatches,
     evaluate: evaluate,
-    fill: fill,
     variantFor: variantFor,
     groupsFor: groupsFor,
     sentence: sentence,
+    normalize: normalize,
+    textMatches: textMatches,
+    evaluateText: evaluateText,
+    readRulebook: readRulebook,
+    rulesToSet: rulesToSet,
     announce: announce,
     answer: answer,
+    reviewEvent: reviewEvent,
+    reviewAnswer: reviewAnswer,
     checkResult: checkResult,
-    boardFiles: boardFiles,
+    replay: replay,
     createStore: createStore,
     browserStorage: browserStorage
   };

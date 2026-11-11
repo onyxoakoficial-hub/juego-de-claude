@@ -44,8 +44,10 @@
     /* The mode in which the assistant asks before each change. */
     permissionModes: {
       askFirstLabel: 'Manual',
+      acceptEditsLabel: 'Accept edits',
       planLabel: 'Plan',
       autoLabel: 'Auto',
+      /* In Auto mode a background checker reviews actions instead of the learner. In Accept edits, file edits need no approval. */
       desktopSwitch: 'the mode selector in the row under the prompt box',
       terminalSwitchKey: 'Shift+Tab',
       source: DOCS + 'permission-modes'
@@ -65,6 +67,8 @@
       anySurface: 'ask the assistant to undo the change',
       source: DOCS + 'checkpointing',
       sourceAnySurface: DOCS + 'how-claude-code-works',
+      /* Undo covers files the assistant edited. A file changed only by a command is not tracked: use Git. With text in the prompt box, Esc twice clears the text instead of opening the menu. */
+      limitsSource: DOCS + 'checkpointing',
       desktopControl: null,
       desktopStatus: 'NOT VERIFIED - waiting for the owner to test it. Do not show in the game.'
     }

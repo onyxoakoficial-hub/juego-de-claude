@@ -38,6 +38,15 @@
   --c-board-a: #fcfbf6;
   --c-board-b: #ccdfcf;
   --c-board-edge: #727e74;
+  --c-demo-paper: #fbfaf6;
+  --c-demo-ink: #111812;
+  --c-demo-muted: #465047;
+  --c-demo-green: #00572e;
+  --c-demo-blue: #02468b;
+  --c-demo-red: #9e1614;
+  --c-demo-bg-green: #d4f0dc;
+  --c-demo-bg-blue: #d7eaff;
+  --c-demo-bg-red: #ffe3df;
   --c-error: #af2b25;
   --c-warn: #ad7300;
   --c-focus: #185b37;
@@ -74,6 +83,15 @@
     --c-board-a: #29302a;
     --c-board-b: #334539;
     --c-board-edge: #6f7b71;
+    --c-demo-paper: #fbfaf6;
+    --c-demo-ink: #111812;
+    --c-demo-muted: #465047;
+    --c-demo-green: #00572e;
+    --c-demo-blue: #02468b;
+    --c-demo-red: #9e1614;
+    --c-demo-bg-green: #d4f0dc;
+    --c-demo-bg-blue: #d7eaff;
+    --c-demo-bg-red: #ffe3df;
     --c-error: #f2897c;
     --c-warn: #e6b55d;
     --c-focus: #7fbb93;
@@ -112,6 +130,15 @@
     --c-board-a: oklch(0.988 0.007 105);
     --c-board-b: oklch(0.885 0.03 150);
     --c-board-edge: oklch(0.58 0.02 150);
+    --c-demo-paper: oklch(0.985 0.006 100);
+    --c-demo-ink: oklch(0.2 0.015 150);
+    --c-demo-muted: oklch(0.42 0.02 150);
+    --c-demo-green: oklch(0.4 0.1 155);
+    --c-demo-blue: oklch(0.4 0.13 255);
+    --c-demo-red: oklch(0.45 0.17 28);
+    --c-demo-bg-green: oklch(0.93 0.04 155);
+    --c-demo-bg-blue: oklch(0.93 0.035 250);
+    --c-demo-bg-red: oklch(0.94 0.035 25);
     --c-error: oklch(0.5 0.17 28);
     --c-warn: oklch(0.6 0.13 75);
     --c-focus: oklch(0.42 0.09 155);
@@ -148,6 +175,15 @@
       --c-board-a: oklch(0.3 0.015 150);
       --c-board-b: oklch(0.37 0.03 155);
       --c-board-edge: oklch(0.57 0.02 150);
+      --c-demo-paper: oklch(0.985 0.006 100);
+      --c-demo-ink: oklch(0.2 0.015 150);
+      --c-demo-muted: oklch(0.42 0.02 150);
+      --c-demo-green: oklch(0.4 0.1 155);
+      --c-demo-blue: oklch(0.4 0.13 255);
+      --c-demo-red: oklch(0.45 0.17 28);
+      --c-demo-bg-green: oklch(0.93 0.04 155);
+      --c-demo-bg-blue: oklch(0.93 0.035 250);
+      --c-demo-bg-red: oklch(0.94 0.035 25);
       --c-error: oklch(0.74 0.13 28);
       --c-warn: oklch(0.8 0.12 80);
       --c-focus: oklch(0.74 0.085 155);
@@ -176,7 +212,7 @@
   --fs-300: 1.275rem;
   --fs-400: 1.53rem;
   --fs-500: clamp(1.8375rem, 1.55rem + 1.3vw, 2.5rem);
-  --fs-600: clamp(2.25rem, 1.6rem + 2.9vw, 3.5rem);
+  --fs-600: clamp(2.25rem, 0.375rem + 3.9vw, 3.5rem);
 
   /* Weights. */
   --fw-body: 400;
@@ -225,7 +261,7 @@
   --badge: 1.25rem;
   --step-dot: 1.5rem;
   --sq: clamp(3rem, 2.4rem + 4vw, 4.25rem);
-  --track-sq: 2.75rem;
+  --track-sq: 2.25rem;
   --map-max: 27rem;
   --piece-scale: 78%;
   --preview-min: 9rem;

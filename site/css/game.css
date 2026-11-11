@@ -97,7 +97,8 @@
 /* ---------- Where am I: the piece on its track (level page) ---------- */
 .track {
   display: grid;
-  grid-template-columns: repeat(5, var(--track-sq));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--track-sq);
   gap: var(--sp-1) 0;
   justify-content: start;
   font-size: var(--fs-100);
@@ -355,7 +356,6 @@
   height: var(--icon-lg);
   padding: var(--sp-1);
   border-radius: var(--r-full);
-  background-color: var(--c-surface-sunk);
   color: var(--c-ink);
 }
 
@@ -551,17 +551,38 @@
   color: var(--c-ink-muted);
 }
 
+/* The preview is a web page in a window: it stays light in both themes, like a real page. */
 .preview__page {
   display: grid;
   place-items: center;
   min-height: var(--preview-min);
   padding: var(--sp-5);
+  background-color: var(--c-demo-paper);
+  color: var(--c-demo-ink);
   text-align: center;
+}
+
+.preview__page[data-bg="green"] {
+  background-color: var(--c-demo-bg-green);
+}
+
+.preview__page[data-bg="blue"] {
+  background-color: var(--c-demo-bg-blue);
+}
+
+.preview__page[data-bg="red"] {
+  background-color: var(--c-demo-bg-red);
 }
 
 .preview__empty {
   max-width: var(--measure-short);
-  color: var(--c-ink-muted);
+  color: var(--c-demo-muted);
+}
+
+.preview__site {
+  display: grid;
+  gap: var(--sp-4);
+  width: 100%;
 }
 
 .preview__heading {
@@ -570,9 +591,38 @@
   font-weight: var(--fw-display);
   line-height: var(--lh-tight);
   letter-spacing: var(--ls-heading);
+  color: var(--c-demo-ink);
   text-wrap: balance;
   overflow-wrap: anywhere;
   animation: rise var(--dur-move) var(--ease-out) both;
+}
+
+.preview__heading[data-color="green"] {
+  color: var(--c-demo-green);
+}
+
+.preview__heading[data-color="blue"] {
+  color: var(--c-demo-blue);
+}
+
+.preview__heading[data-color="red"] {
+  color: var(--c-demo-red);
+}
+
+.preview__heading[data-size="large"] {
+  font-size: var(--fs-600);
+}
+
+.preview__heading[data-size="small"] {
+  font-size: var(--fs-300);
+}
+
+.preview__footer {
+  padding-top: var(--sp-3);
+  border-top: var(--hairline) solid var(--c-demo-muted);
+  font-size: var(--fs-100);
+  color: var(--c-demo-muted);
+  overflow-wrap: anywhere;
 }
 
 /* A plain text note: what the assistant makes when the prompt does not name a web page. */
@@ -582,7 +632,9 @@
   font-family: var(--font-mono);
   font-size: var(--fs-100);
   text-align: left;
+  white-space: pre-line;
   overflow-wrap: anywhere;
+  color: var(--c-demo-ink);
   animation: rise var(--dur-move) var(--ease-out) both;
 }
 
@@ -855,4 +907,44 @@
 
 .win__mark-row {
   display: flex;
+}
+
+/* ---------- Typed answers ---------- */
+.stage__type {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.field {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--sp-3) var(--sp-4);
+  border: var(--hairline) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background-color: var(--c-surface);
+  box-shadow: var(--shadow-inset);
+  font: inherit;
+  font-size: var(--fs-200);
+  line-height: var(--lh-snug);
+  color: var(--c-ink);
+  resize: vertical;
+}
+
+.field:disabled {
+  background-color: var(--c-surface-sunk);
+  color: var(--c-ink-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .field:not(:disabled):hover {
+    border-color: var(--c-ink);
+  }
+}
+
+/* ---------- Before / After ---------- */
+.compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
 }

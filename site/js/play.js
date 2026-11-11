@@ -244,13 +244,14 @@
   /* ---------- One level ---------- */
 
   var el = {};
-  ['stepline', 'track', 'nextline', 'context', 'task', 'build', 'say-label', 'say', 'groups', 'actions', 'announce',
-    'hint-button', 'hint', 'hint-label', 'hint-text', 'hint-note', 'reply', 'reply-who', 'reply-text', 'ask', 'ask-title',
-    'ask-question', 'ask-file', 'ask-kind', 'yes', 'no', 'verdict', 'verdict-text', 'verdict-next', 'question', 'options',
-    'question-feedback', 'recap', 'recap-title', 'recap-concept-label', 'recap-concept', 'recap-file-label', 'recap-file',
-    'recap-file-note', 'recap-real-label', 'recap-real', 'recap-next-label', 'recap-next', 'recap-map', 'live', 'board-label',
-    'board-note', 'board', 'board-status', 'preview-label', 'preview-note', 'preview-bar', 'preview-empty', 'preview-heading',
-    'preview-text'
+  ['stepline', 'track', 'nextline', 'context', 'task', 'build', 'say-label', 'say', 'groups', 'type', 'review-line',
+    'type-label', 'input', 'type-help', 'actions', 'announce', 'hint-button', 'hint', 'hint-label', 'hint-text',
+    'hint-note', 'reply', 'reply-who', 'reply-text', 'ask', 'ask-title', 'ask-question', 'ask-mark', 'ask-file',
+    'ask-kind', 'yes', 'no', 'verdict', 'verdict-text', 'verdict-next', 'question', 'options', 'question-feedback',
+    'recap', 'recap-title', 'recap-concept-label', 'recap-concept', 'recap-items', 'recap-real-label', 'recap-real',
+    'recap-next-label', 'recap-next', 'recap-map', 'live', 'board-label', 'board-note', 'board', 'board-status',
+    'preview-label', 'preview-note', 'preview-bar', 'preview-empty', 'preview-page', 'preview-site',
+    'preview-heading', 'preview-footer', 'preview-text', 'compare', 'compare-label', 'compare-before', 'compare-after'
   ].forEach(function (name) {
     el[name] = $('[data-' + name + ']', page.levelView);
   });
@@ -258,6 +259,7 @@
   el.table = $('[data-table]', page.levelView);
 
   var session = null;
+  var world = { files: [], view: { kind: 'none' }, rules: [] };
 
   function step() {
     return session.level.steps[session.index];
@@ -285,7 +287,9 @@
       selection: {},
       hints: 0,
       effects: [],
-      pending: null
+      pending: null,
+      eventIndex: 0,
+      show: 'after'
     };
 
     document.title = E.fill(U.levelTitle, { name: meta.name, move: meta.move });
@@ -298,22 +302,20 @@
     show(page.mapView, false);
     show(page.levelView, true);
 
-    put(el['say-label'], U.youSay);
     put(el['reply-who'], U.theAssistant);
     put(el['ask-title'], U.theAssistantAsks);
-    put(el['ask-kind'], U.newFile);
     put(el.yes, U.yes);
     put(el.no, U.no);
-    put(el.announce, U.announce);
     put(el['hint-label'], U.hintLabel);
     put(el['board-label'], U.board);
     put(el['board-note'], U.boardNote);
     put(el['preview-label'], U.preview);
     put(el['preview-note'], U.previewNote);
     put(el['preview-empty'], U.previewEmpty);
+    put(el['compare-label'], U.compareLabel);
+    put(el['compare-before'], U.compareBefore);
+    put(el['compare-after'], U.compareAfter);
 
-    renderBoard();
-    renderPreview(null);
     renderStep(false);
   }
 
@@ -334,7 +336,7 @@
   }
 
   function renderBoard() {
-    var files = E.boardFiles(session.effects);
+    var files = world.files;
     el.board.textContent = '';
     for (var i = 0; i < 4; i += 1) {
       var sq = make('span', 'sq ' + (i % 2 === 0 ? 'sq--b' : 'sq--a'));
@@ -351,37 +353,85 @@
     }
   }
 
-  function renderPreview(effect) {
-    var hasEffect = Boolean(effect);
-    put(el['preview-bar'], hasEffect ? effect.file : U.previewNone);
-    show(el['preview-empty'], !hasEffect);
-    show(el['preview-heading'], hasEffect && effect.kind === 'page');
-    show(el['preview-text'], hasEffect && effect.kind === 'note');
-    put(el['preview-heading'], hasEffect && effect.kind === 'page' ? effect.text : '');
-    put(el['preview-text'], hasEffect && effect.kind === 'note' ? effect.text : '');
+  function setAttr(node, name, value, plain) {
+    if (value && value !== plain) node.setAttribute(name, value);
+    else node.removeAttribute(name);
+  }
+
+  function renderPreview() {
+    var view = world.view;
+    var isPage = view.kind === 'page';
+    var canCompare = isPage && Boolean(view.before);
+    var shown = isPage ? (session.show === 'before' && view.before ? view.before : view.page) : null;
+
+    put(el['preview-bar'], view.file || U.previewNone);
+    show(el['preview-empty'], view.kind === 'none');
+    show(el['preview-site'], isPage);
+    show(el['preview-text'], view.kind === 'note' || view.kind === 'rulebook');
+
+    if (isPage) {
+      put(el['preview-heading'], shown.text);
+      setAttr(el['preview-heading'], 'data-color', shown.color, 'ink');
+      setAttr(el['preview-heading'], 'data-size', shown.size, 'normal');
+      setAttr(el['preview-page'], 'data-bg', shown.bg, 'paper');
+      put(el['preview-footer'], shown.footer || '');
+      show(el['preview-footer'], Boolean(shown.footer));
+    } else {
+      el['preview-page'].removeAttribute('data-bg');
+    }
+    if (view.kind === 'note') put(el['preview-text'], view.text);
+    if (view.kind === 'rulebook') put(el['preview-text'], view.lines.map(function (line) { return '- ' + line; }).join('\n'));
+
+    show(el.compare, canCompare);
+    el['compare-before'].setAttribute('aria-pressed', session.show === 'before' ? 'true' : 'false');
+    el['compare-after'].setAttribute('aria-pressed', session.show === 'before' ? 'false' : 'true');
+  }
+
+  function renderWorld() {
+    world = E.replay(session.effects);
+    renderBoard();
+    renderPreview();
+  }
+
+  function applyEffects(effects) {
+    if (!effects || !effects.length) return;
+    effects.forEach(function (effect) {
+      session.effects.push(effect);
+    });
+    session.show = 'after';
+    renderWorld();
+    /* On a phone the preview sits below the card: bring it into view, so the learner sees what changed. */
+    reveal(el.table);
   }
 
   /* ---------- A step ---------- */
 
   function resetStepParts() {
-    show(el.hint, false);
-    show(el.reply, false);
-    show(el.ask, false);
-    show(el.verdict, false);
-    show(el.question, false);
-    show(el.recap, false);
-    show(el.build, false);
+    [el.hint, el.reply, el.ask, el.verdict, el.question, el.recap, el.build, el.type, el['review-line']].forEach(function (node) {
+      show(node, false);
+    });
     put(el['reply-text'], '');
     put(el['question-feedback'], '');
     session.selection = {};
     session.hints = 0;
     session.pending = null;
+    session.eventIndex = 0;
+    el.input.value = '';
+    el.input.disabled = false;
+    show(el.announce, true);
+    show(el.actions, false);
   }
 
   function renderStep(animate) {
     var current = step();
     var total = session.level.steps.length;
     resetStepParts();
+
+    if (current.board) {
+      session.effects = E.fillDeep(current.board, variant()).slice();
+      session.show = 'after';
+    }
+    renderWorld();
 
     put(el.stepline, E.fill(U.stepLine, { n: session.index + 1, total: total }) + ' · ' + current.name);
     var next = session.level.steps[session.index + 1];
@@ -392,20 +442,25 @@
     put(el.context, current.context || '');
     show(el.context, Boolean(current.context));
     put(el.task, E.fill(current.task, variant()));
+    show(el.task, true);
 
     if (current.kind === 'question') renderQuestion(current);
-    else renderBuild(current);
+    else if (current.kind === 'review') renderReviewEvent();
+    else if (current.kind === 'build') renderBuild(current);
+    else renderTyped(current);
 
     announceLive(E.fill(U.stepLine, { n: session.index + 1, total: total }) + '. ' + el.task.textContent);
     el.task.focus({ preventScroll: true });
     reveal(el.task);
   }
 
-  /* ---------- Build step ---------- */
+  /* ---------- Build step (tiles) ---------- */
 
   function renderBuild(current) {
     show(el.build, true);
     show(el.actions, true);
+    put(el['say-label'], current.sayLabel || U.youSay);
+    put(el.announce, current.announceLabel || U.announce);
     el.groups.textContent = '';
 
     E.groupsFor(current, variant()).forEach(function (group) {
@@ -440,7 +495,7 @@
   }
 
   function chips() {
-    return el.groups.querySelectorAll('[data-chip], .chip');
+    return el.groups.querySelectorAll('.chip');
   }
 
   function chooseTile(groupId, optionId) {
@@ -460,11 +515,30 @@
     else el.say.setAttribute('data-empty', '');
   }
 
-  function lockTiles(locked) {
-    chips().forEach(function (chip) {
-      chip.disabled = locked;
-    });
+  /* ---------- Typed step ---------- */
+
+  function showTypeBox(label, help, rows) {
+    show(el.type, true);
+    put(el['type-label'], label);
+    put(el['type-help'], help);
+    el.input.rows = rows || 2;
+    el.input.disabled = false;
+    el.input.value = '';
   }
+
+  function renderTyped(current) {
+    var rules = current.kind === 'rules';
+    show(el.actions, true);
+    put(el.announce, current.announceLabel || U.announce);
+    showTypeBox(rules ? U.rulesLabel : U.typeLabel, rules ? U.rulesHelp : U.typeHelp, current.rows || 2);
+    renderHintButton();
+  }
+
+  function lockInput(locked) {
+    el.input.disabled = locked;
+  }
+
+  /* ---------- Hints and answers ---------- */
 
   function say(text, tone) {
     put(el['reply-text'], text);
@@ -474,6 +548,7 @@
     void el['reply-text'].offsetWidth;
     el['reply-text'].style.animation = '';
     announceLive(text);
+    reveal(el.reply);
   }
 
   function renderHintButton() {
@@ -496,57 +571,111 @@
     renderHintButton();
   }
 
+  /* The thing the learner is answering right now: the step, or the current request of a review. */
+  function activeStep() {
+    var current = step();
+    if (current.kind !== 'review') return current;
+    var event = E.reviewEvent(current, variant(), session.eventIndex);
+    return event && event.kind === 'type' ? event : null;
+  }
+
   function announceMove() {
-    var result = E.announce(step(), variant(), session.selection);
-    if (result.type !== 'ask') {
-      say(result.reply, 'hint');
+    var active = activeStep();
+    if (!active) return;
+    var input = active.kind === 'build' ? session.selection : el.input.value;
+    var res = E.announce(active, variant(), input, { rules: world.rules });
+
+    if (res.type === 'ask') {
+      session.pending = res;
+      say(res.reply, 'ask');
+      showAsk(res.ask);
+      lockTiles(true);
+      lockInput(true);
+      show(el.actions, false);
       return;
     }
-    session.pending = result;
-    say(result.reply, 'ask');
-    put(el['ask-question'], result.ask.question);
-    put(el['ask-file'], result.ask.file);
-    lockTiles(true);
-    show(el.actions, false);
+    if (res.type === 'done') {
+      say(res.reply, 'done');
+      completeMove(res);
+      return;
+    }
+    say(res.reply, 'hint');
+  }
+
+  function showAsk(ask) {
+    put(el['ask-question'], ask.question);
+    put(el['ask-mark'], ask.mark);
+    put(el['ask-file'], ask.file);
+    put(el['ask-kind'], ask.change);
     show(el.ask, true);
     el.ask.focus({ preventScroll: true });
     reveal(el.ask);
   }
 
+  function lockTiles(locked) {
+    chips().forEach(function (chip) {
+      chip.disabled = locked;
+    });
+  }
+
   function deny() {
+    if (step().kind === 'review') {
+      answerReview('no');
+      return;
+    }
     session.pending = null;
     show(el.ask, false);
     show(el.actions, true);
     lockTiles(false);
+    lockInput(false);
     say(U.denied, 'hint');
     el.announce.focus();
   }
 
   function approve() {
-    var result = session.pending;
-    if (!result) return;
-    session.pending = null;
-    show(el.ask, false);
-
-    if (result.effect) {
-      session.effects.push(result.effect);
-      renderBoard();
-      renderPreview(result.effect);
-    }
-    say(E.fill(U.done, { file: result.effect ? result.effect.file : '' }), 'done');
-
-    if (!result.completes) {
-      show(el.actions, true);
-      lockTiles(false);
+    if (step().kind === 'review') {
+      answerReview('yes');
       return;
     }
+    var res = session.pending;
+    if (!res) return;
+    session.pending = null;
+    show(el.ask, false);
+    say(E.fill(U.done, { file: res.ask ? res.ask.file : '' }), 'done');
+    completeMove(res);
+  }
 
+  /* A move was made: show what it changed, then go on to the next request or finish the step. */
+  function completeMove(res) {
+    applyEffects(res.effects);
+    if (step().kind === 'review') {
+      session.eventIndex += 1;
+      renderReviewEvent();
+      return;
+    }
+    if (!res.completes) {
+      show(el.actions, true);
+      lockTiles(false);
+      lockInput(false);
+      return;
+    }
+    finishStep(res.verdict);
+  }
+
+  function verdictIcon(id) {
+    el.verdict.querySelector('use').setAttribute('href', '#' + id);
+  }
+
+  function finishStep(verdictText) {
     var current = step();
     var repeat = current.check && E.checkResult(session.hints) === 'repeat';
-    var isLastBuild = session.level.steps[session.index + 1] && session.level.steps[session.index + 1].kind === 'question';
+    var next = session.level.steps[session.index + 1];
+    var toQuestion = next && next.kind === 'question';
+    show(el.actions, false);
 
     if (repeat) {
       el.verdict.setAttribute('data-tone', 'neutral');
+      verdictIcon('icon-repeat');
       put(el['verdict-text'], U.hintUsedRepeat);
       put(el['verdict-next'], U.repeatCheck);
       el['verdict-next'].onclick = function () {
@@ -556,8 +685,9 @@
     } else {
       store.setStepsDone(session.n, session.index + 1);
       el.verdict.setAttribute('data-tone', 'good');
-      put(el['verdict-text'], result.verdict);
-      put(el['verdict-next'], isLastBuild ? U.toQuestion : U.nextStep);
+      verdictIcon('icon-check');
+      put(el['verdict-text'], verdictText || current.doneVerdict || '');
+      put(el['verdict-next'], toQuestion ? U.toQuestion : U.nextStep);
       el['verdict-next'].onclick = function () {
         session.index += 1;
         renderStep(true);
@@ -567,8 +697,58 @@
     announceLive(el['verdict-text'].textContent);
     el.verdict.focus({ preventScroll: true });
     reveal(el.verdict);
-    /* On a phone the preview sits below the card: bring it into view too, so the learner sees what appeared. */
     reveal(el.table);
+  }
+
+  /* ---------- Review step: several requests in a row ---------- */
+
+  function renderReviewEvent() {
+    var current = step();
+    var total = current.events.length;
+    var event = E.reviewEvent(current, variant(), session.eventIndex);
+
+    if (!event) {
+      show(el['review-line'], false);
+      show(el.type, false);
+      show(el.ask, false);
+      finishStep(current.doneVerdict);
+      return;
+    }
+
+    put(el['review-line'], E.fill(U.reviewLine, { n: session.eventIndex + 1, total: total }));
+    show(el['review-line'], true);
+    show(el.reply, false);
+    show(el.actions, true);
+    renderHintButton();
+
+    if (event.kind === 'ask') {
+      show(el.type, false);
+      show(el.announce, false);
+      showAsk(event.ask);
+      return;
+    }
+
+    show(el.ask, false);
+    show(el.announce, true);
+    put(el.announce, U.announce);
+    put(el.context, event.prompt);
+    show(el.context, true);
+    showTypeBox(U.reviewTypeLabel, U.typeHelp, 2);
+    announceLive(event.prompt);
+  }
+
+  function answerReview(choice) {
+    var event = E.reviewEvent(step(), variant(), session.eventIndex);
+    var res = E.reviewAnswer(event, choice);
+    if (!res.right) {
+      say(res.reply, 'hint');
+      return;
+    }
+    show(el.ask, false);
+    say(res.reply, 'done');
+    applyEffects(res.effects);
+    session.eventIndex += 1;
+    renderReviewEvent();
   }
 
   /* ---------- Question step ---------- */
@@ -612,6 +792,7 @@
 
     var text = U.questionRight + ' ' + result.why;
     el.verdict.setAttribute('data-tone', 'good');
+    verdictIcon('icon-check');
     put(el['question-feedback'], '');
     put(el['verdict-text'], text);
     put(el['verdict-next'], U.seeRecap);
@@ -629,13 +810,9 @@
   function renderRecap() {
     var recap = session.level.recap;
     var after = levelMeta(session.n + 1);
-    show(el.build, false);
-    show(el.question, false);
-    show(el.verdict, false);
-    show(el.hint, false);
-    show(el.reply, false);
-    show(el.context, false);
-    show(el.nextline, false);
+    [el.build, el.type, el.question, el.verdict, el.hint, el.reply, el.context, el.nextline, el.actions, el.ask].forEach(function (node) {
+      show(node, false);
+    });
 
     put(el.stepline, U.levelPassed);
     put(el.task, '');
@@ -645,9 +822,18 @@
     put(el['recap-title'], E.fill(U.recapTitle, { n: session.n, name: session.meta.name }));
     put(el['recap-concept-label'], U.recapConcept);
     put(el['recap-concept'], recap.concept);
-    put(el['recap-file-label'], 'File you made');
-    put(el['recap-file'], recap.file);
-    put(el['recap-file-note'], recap.fileNote);
+
+    el['recap-items'].textContent = '';
+    recap.items.forEach(function (item) {
+      var box = make('div', 'recap__fact');
+      box.appendChild(make('dt', '', item.label));
+      var value = make('dd');
+      value.appendChild(make('span', item.mono ? 'recap__value--mono' : '', item.value));
+      box.appendChild(value);
+      if (item.note) box.appendChild(make('dd', 'fine', item.note));
+      el['recap-items'].appendChild(box);
+    });
+
     put(el['recap-real-label'], U.recapReal);
     put(el['recap-real'], recap.realStart);
     put(el['recap-next-label'], U.recapNext);
@@ -669,6 +855,19 @@
   el['hint-button'].addEventListener('click', showHint);
   el.yes.addEventListener('click', approve);
   el.no.addEventListener('click', deny);
+  el['compare-before'].addEventListener('click', function () {
+    session.show = 'before';
+    renderPreview();
+  });
+  el['compare-after'].addEventListener('click', function () {
+    session.show = 'after';
+    renderPreview();
+  });
+  el.input.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' || event.shiftKey || el.input.rows > 2) return;
+    event.preventDefault();
+    announceMove();
+  });
 
   setupReset();
   selectedLevel = firstOpenLevel();

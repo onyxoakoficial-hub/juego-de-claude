@@ -17,7 +17,7 @@ This file is the rulebook for anyone (person or AI) who works on this repository
 
 Three skills set the quality bar. They are not stored in this repository (it is public); load them in the session.
 
-1. `premium-web-design` — read before any visual decision. Run its audit before each review.
+1. `agency-web-design` — read before any visual decision. Run `references/qa-checklist.md` (sections A to G) before each review.
 2. `web-legal-compliance` — applies to assets, fonts, trademarks, stored data and every claim.
 3. `conversion-marketing` — blueprint C for the landing page, section 8 (activation) inside the game.
 
@@ -60,8 +60,15 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
 - Finishing steps never passes a level. Only a clean check followed by the right answer to the question
   calls `markPassed`. Level N opens only when level N-1 is passed. The address bar cannot skip ahead.
 - Variants come in a fixed order and wrap around. There is no randomness anywhere.
-- A level is data in `site/content/en.js` (tiles, rules, outcomes, hints, recap). Adding level 2 to 6
-  means adding data; `tests/content.test.js` then checks it automatically.
+- A level is data in `site/content/en.js` (steps, rules, outcomes, hints, recap). Adding level 5 or 6
+  means adding data; `tests/content.test.js` checks it automatically, and `tests/engine.test.js` plays
+  every level from start to end with the engine alone.
+- Step kinds: `build` (word tiles, levels 1 and 2 and the mode picker), `type` (one typed line),
+  `rules` (a typed rulebook, one rule per line), `review` (several requests answered yes or no, plus a
+  typed one) and `question`. Typed answers are matched forgivingly: case, punctuation, word order, extra
+  words and one-letter typos (including swapped letters) in words of five letters or more.
+- Levels 1 and 2 use tiles. From level 3 the learner types; a hint is the way back to tiles and examples.
+- A step may set the board it starts from (`board`), so a level can resume in the middle.
 
 ## Game rules
 
@@ -103,8 +110,9 @@ How the rule is built (`site/js/engine.js`, tested in `tests/engine.test.js`):
   price before proposing one.
 - Mobile first from 360 px. Full keyboard support. WCAG 2.2 AA. Light and dark themes.
   `prefers-reduced-motion` is respected.
-- Budgets: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less, under 100 KB of JavaScript,
-  Lighthouse 95 or more in every category.
+- Budgets: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less, under 100 KB of JavaScript on every
+  page (raw size of the scripts that page loads; `tests/site.test.js` checks it), Lighthouse 95 or more in
+  every category. `site/content/facts.js` is data for editing and tests; no page loads it.
 
 ## Design
 

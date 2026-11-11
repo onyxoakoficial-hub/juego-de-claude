@@ -14,7 +14,6 @@
   <link rel="stylesheet" href="css/game.css">
   <link rel="stylesheet" href="css/play.css">
   <script defer src="content/en.js"></script>
-  <script defer src="content/facts.js"></script>
   <script defer src="js/engine.js"></script>
   <script defer src="js/play.js"></script>
 </head>
@@ -78,6 +77,9 @@
     </symbol>
     <symbol id="icon-back" viewBox="0 0 24 24">
       <path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-repeat" viewBox="0 0 24 24">
+      <path d="M4 12a8 8 0 0 1 13.5-5.8L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.5 5.8L4 15.5M4 20v-4.5h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
     <symbol id="icon-lock" viewBox="0 0 24 24">
       <path d="M7.5 11V8a4.5 4.5 0 0 1 9 0v3M6.5 11h11a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.500v-6A1.5 1.5 0 0 1 6.5 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -160,10 +162,19 @@
                 <p class="say__line" data-say data-empty aria-live="polite"></p>
               </div>
               <div class="groups" data-groups></div>
-              <div class="stage__actions" data-actions>
-                <button type="button" class="btn btn--primary btn--block" data-announce></button>
-                <button type="button" class="btn btn--secondary btn--block" data-hint-button></button>
-              </div>
+            </div>
+
+            <p class="label label--muted" data-review-line hidden></p>
+
+            <div class="stage__type" data-type hidden>
+              <label class="label label--muted" for="lv-input" data-type-label></label>
+              <textarea class="field" id="lv-input" data-input rows="2" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
+              <p class="fine" data-type-help></p>
+            </div>
+
+            <div class="stage__actions" data-actions>
+              <button type="button" class="btn btn--primary btn--block" data-announce></button>
+              <button type="button" class="btn btn--secondary btn--block" data-hint-button></button>
             </div>
 
             <div class="hint" data-hint role="group" aria-labelledby="lv-hint-label" hidden>
@@ -180,7 +191,7 @@
             <div class="ask" data-ask role="group" aria-labelledby="lv-ask-title lv-ask-question" tabindex="-1" hidden>
               <p class="label" id="lv-ask-title" data-ask-title></p>
               <p class="ask__question" id="lv-ask-question" data-ask-question></p>
-              <p class="ask__change"><span aria-hidden="true">+</span> <code data-ask-file></code> <span data-ask-kind></span></p>
+              <p class="ask__change"><span aria-hidden="true" data-ask-mark>+</span> <code data-ask-file></code> <span data-ask-kind></span></p>
               <div class="ask__buttons">
                 <button type="button" class="btn btn--primary" data-yes></button>
                 <button type="button" class="btn btn--secondary" data-no></button>
@@ -204,17 +215,11 @@
                 <p class="label label--muted" data-recap-concept-label></p>
                 <p class="recap__concept" data-recap-concept></p>
               </div>
-              <dl class="recap__facts">
-                <div class="recap__fact">
-                  <dt data-recap-file-label></dt>
-                  <dd><span class="recap__value--mono" data-recap-file></span></dd>
-                  <dd class="fine" data-recap-file-note></dd>
-                </div>
-                <div class="recap__fact">
-                  <dt data-recap-real-label></dt>
-                  <dd data-recap-real></dd>
-                </div>
-              </dl>
+              <dl class="recap__facts" data-recap-items></dl>
+              <div class="recap__block">
+                <p class="label label--muted" data-recap-real-label></p>
+                <p data-recap-real></p>
+              </div>
               <div class="recap__block">
                 <p class="label label--muted" data-recap-next-label></p>
                 <p class="recap__next" data-recap-next></p>
@@ -235,11 +240,19 @@
             </figure>
             <figure class="table__part preview">
               <figcaption class="label"><span data-preview-label></span> <span class="label__note" data-preview-note></span></figcaption>
+              <div class="compare" data-compare role="group" aria-labelledby="lv-compare-label" hidden>
+                <span class="visually-hidden" id="lv-compare-label" data-compare-label></span>
+                <button type="button" class="chip" aria-pressed="false" data-compare-before></button>
+                <button type="button" class="chip" aria-pressed="true" data-compare-after></button>
+              </div>
               <div class="preview__window">
                 <p class="preview__bar" data-preview-bar></p>
-                <div class="preview__page">
+                <div class="preview__page" data-preview-page>
                   <p class="preview__empty" data-preview-empty></p>
-                  <p class="preview__heading" data-preview-heading hidden></p>
+                  <div class="preview__site" data-preview-site hidden>
+                    <p class="preview__heading" data-preview-heading></p>
+                    <p class="preview__footer" data-preview-footer hidden></p>
+                  </div>
                   <p class="preview__note" data-preview-text hidden></p>
                 </div>
               </div>

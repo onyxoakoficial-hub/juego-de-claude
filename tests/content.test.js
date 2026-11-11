@@ -2,7 +2,7 @@
 
 /*
   The lesson data in content/en.js: every level is complete, consistent and honest.
-  Written so that levels 2 to 6 are checked automatically as soon as they are added.
+  Written so that levels 5 and 6 are checked automatically as soon as they are added.
 */
 
 const test = require('node:test');
@@ -17,43 +17,95 @@ require(path.join(SITE, 'js', 'engine.js'));
 const { content: C, facts, engine: E } = globalThis.CHECKMATE;
 const built = Object.keys(C.levels).map(Number);
 
+/* Words filled in at run time, besides the variant's own. */
+const RUNTIME = { line: 2, text: 'x', topic: 'x' };
+
+const leftover = (text) => /[{}]/.test(text);
+
+function allStrings(value, out = []) {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => allStrings(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach((v) => allStrings(v, out));
+  return out;
+}
+
 test('the six levels are listed, in order, one piece each', () => {
   assert.deepStrictEqual(C.levelList.map((l) => l.name), ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King']);
   assert.deepStrictEqual(C.levelList.map((l) => l.id), [1, 2, 3, 4, 5, 6]);
   assert.deepStrictEqual(C.levelList.map((l) => l.piece), ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']);
 });
 
-test('level 1 is built, and it ends with a check and a question', () => {
-  assert.ok(built.includes(1));
-  const steps = C.levels[1].steps;
-  assert.ok(steps.some((s) => s.check), 'a level needs a mastery check');
-  assert.strictEqual(steps[steps.length - 1].kind, 'question', 'the last step is "what did the assistant just do, and why?"');
+test('levels 1 to 4 are built, and each ends with a check followed by a question', () => {
+  assert.deepStrictEqual(built, [1, 2, 3, 4]);
+  for (const n of built) {
+    const steps = C.levels[n].steps;
+    assert.ok(steps.some((s) => s.check), `level ${n} needs a mastery check`);
+    assert.strictEqual(steps[steps.length - 1].kind, 'question', `level ${n} must end with "what did the assistant just do, and why?"`);
+    assert.ok(steps[steps.length - 2].check, `level ${n}: the check comes right before the question`);
+  }
 });
 
 for (const n of built) {
   test(`level ${n}: every step is complete and every rule points to a real answer`, () => {
     for (const step of C.levels[n].steps) {
-      assert.ok(step.id && step.name && step.task, `${step.id}: needs id, name and task`);
+      const where = `level ${n} step ${step.id}`;
+      assert.ok(step.id && step.name && step.task, `${where}: needs id, name and task`);
+
       if (step.kind === 'question') {
-        assert.strictEqual(step.options.filter((o) => o.right).length, 1, `${step.id}: exactly one right answer`);
-        for (const o of step.options.filter((x) => !x.right)) assert.ok(o.why, `${step.id}.${o.id}: a wrong answer needs an explanation`);
+        assert.strictEqual(step.options.filter((o) => o.right).length, 1, `${where}: exactly one right answer`);
+        for (const o of step.options.filter((x) => !x.right)) assert.ok(o.why && o.why.length > 20, `${where}.${o.id}: a wrong answer needs an explanation`);
+        assert.ok(step.rightWhy && step.rightWhy.length > 20, `${where}: explain why the right answer is right`);
         continue;
       }
-      assert.ok(step.hints && step.hints.length >= 2, `${step.id}: at least two hints, from gentle to direct`);
-      assert.ok(step.variants && step.variants.length >= 1);
-      if (step.check) assert.ok(step.variants.length >= 3, `${step.id}: a check needs 3 or more variants`);
 
-      const groups = {};
-      for (const g of step.groups) groups[g.id] = g.options.map((o) => o.id);
-      for (const rule of step.rules) {
-        assert.ok(step.outcomes[rule.outcome], `${step.id}: rule points to missing outcome "${rule.outcome}"`);
-        for (const [group, wanted] of Object.entries(rule.when)) {
-          assert.ok(groups[group], `${step.id}: rule uses unknown group "${group}"`);
-          if (wanted !== null) assert.ok(groups[group].includes(wanted), `${step.id}: rule uses unknown tile "${group}.${wanted}"`);
+      assert.ok(step.hints && step.hints.length >= 2, `${where}: at least two hints, from gentle to direct`);
+      assert.ok(step.variants && step.variants.length >= 1, `${where}: variants`);
+      if (step.check) assert.ok(step.variants.length >= 3, `${where}: a check needs 3 or more variants`);
+
+      if (step.kind === 'review') {
+        assert.ok(step.events.length >= 1, `${where}: needs requests`);
+        for (const event of step.events) {
+          if (event.kind === 'ask') {
+            assert.ok(['yes', 'no'].includes(event.correct), `${where}: a request needs a right answer`);
+            assert.ok(event.wrongReply && event.ask.question, `${where}: a request needs its question and a reply for the wrong answer`);
+            assert.ok(event.correct === 'yes' ? event.yesReply : event.noReply, `${where}: a request needs a reply for the right answer`);
+          } else {
+            assert.strictEqual(event.kind, 'type', `${where}: unknown request kind`);
+            for (const rule of event.rules) assert.ok(event.outcomes[rule.outcome], `${where}: rule points to missing outcome "${rule.outcome}"`);
+            assert.ok(Object.values(event.outcomes).some((o) => o.completes), `${where}: the typed request must be able to finish`);
+          }
+        }
+        assert.ok(step.doneVerdict, `${where}: doneVerdict`);
+        continue;
+      }
+
+      if (step.kind === 'rules') {
+        assert.ok(step.categories.length >= 3, `${where}: categories`);
+        for (const key of ['empty', 'vague', 'good']) assert.ok(step.outcomes[key], `${where}: missing outcome "${key}"`);
+        const need = new Set(step.variants.flatMap((v) => v.need || step.need || []));
+        for (const id of need) assert.ok(step.categories.some((c) => c.id === id), `${where}: needs unknown topic "${id}"`);
+        if (need.size) assert.ok(step.outcomes.missing, `${where}: missing outcome "missing"`);
+      } else if (step.kind === 'type') {
+        assert.ok(step.rules.length >= 2, `${where}: rules`);
+        for (const rule of step.rules) assert.ok(step.outcomes[rule.outcome], `${where}: rule points to missing outcome "${rule.outcome}"`);
+        assert.ok(step.rules[step.rules.length - 1].when && Object.keys(step.rules[step.rules.length - 1].when).length === 0, `${where}: the last rule catches everything else`);
+      } else {
+        assert.strictEqual(step.kind, 'build', `${where}: unknown step kind`);
+        const groups = {};
+        for (const g of step.groups) groups[g.id] = g.options.map((o) => o.id);
+        for (const rule of step.rules) {
+          assert.ok(step.outcomes[rule.outcome], `${where}: rule points to missing outcome "${rule.outcome}"`);
+          for (const [group, wanted] of Object.entries(rule.when)) {
+            assert.ok(groups[group], `${where}: rule uses unknown group "${group}"`);
+            if (typeof wanted === 'string' && wanted.startsWith('$')) {
+              for (const v of step.variants) assert.ok(groups[group].includes(v[wanted.slice(1)]), `${where}: variant asks for a tile that does not exist`);
+            } else if (wanted !== null) {
+              assert.ok(groups[group].includes(wanted), `${where}: rule uses unknown tile "${group}.${wanted}"`);
+            }
+          }
         }
       }
-      assert.ok(step.rules.some((r) => Object.keys(r.when).length === 0) || step.outcomes.vague || step.outcomes.good, `${step.id}: has a way to succeed`);
-      assert.ok(Object.values(step.outcomes).some((o) => o.completes), `${step.id}: has an outcome that completes the step`);
+      assert.ok(Object.values(step.outcomes).some((o) => o.completes), `${where}: has an outcome that completes the step`);
     }
   });
 
@@ -61,35 +113,58 @@ for (const n of built) {
     for (const step of C.levels[n].steps) {
       if (step.kind === 'question') continue;
       for (const variant of step.variants) {
-        const text = [E.fill(step.task, variant)];
-        for (const g of E.groupsFor(step, variant)) for (const o of g.options) text.push(o.text);
-        for (const spec of Object.values(step.outcomes)) {
-          text.push(E.fill(spec.reply, variant), E.fill(spec.verdict, variant));
-          if (spec.ask) text.push(E.fill(spec.ask.question, variant), E.fill(spec.ask.file, variant));
-          if (spec.effect) text.push(E.fill(spec.effect.text, variant), E.fill(spec.effect.file, variant));
+        const vars = Object.assign({}, variant, RUNTIME);
+        const texts = [];
+        texts.push(E.fill(step.task, vars), E.fill(step.context, vars));
+        if (step.groups) for (const g of E.groupsFor(step, variant)) for (const o of g.options) texts.push(o.text);
+        const specs = [];
+        if (step.outcomes) specs.push(...Object.values(step.outcomes));
+        for (const event of step.events || []) {
+          const filled = E.fillDeep(event, vars);
+          texts.push(...allStrings(filled).filter((t) => !/^[a-z]+$/.test(t)));
+          if (filled.outcomes) specs.push(...Object.values(filled.outcomes));
         }
-        for (const t of text) assert.ok(!/[{}]/.test(t), `${step.id}: "${t}"`);
+        for (const spec of specs) {
+          texts.push(E.fill(spec.reply, vars), E.fill(spec.verdict, vars));
+          if (spec.ask) texts.push(E.fill(spec.ask.question, vars), E.fill(spec.ask.file, vars));
+        }
+        for (const t of texts) assert.ok(!leftover(t), `level ${n} step ${step.id}: "${t}"`);
       }
+    }
+    for (const board of C.levels[n].steps.map((s) => s.board).filter(Boolean)) {
+      for (const t of allStrings(E.fillDeep(board, { junk: 'x', color: 'x' }))) assert.ok(!leftover(t), `board: ${t}`);
     }
   });
 
-  test(`level ${n}: the recap names a concept, a file and the real way to start`, () => {
+  test(`level ${n}: the recap names a concept, a way to start the real tool and a next piece`, () => {
     const recap = C.levels[n].recap;
-    for (const key of ['concept', 'file', 'fileNote', 'realStart', 'next']) assert.ok(recap[key] && recap[key].length > 3, `recap.${key}`);
+    for (const key of ['concept', 'realStart', 'next']) assert.ok(recap[key] && recap[key].length > 3, `recap.${key}`);
+    assert.ok(recap.items.length >= 1);
+    for (const item of recap.items) assert.ok(item.label && item.value, 'each recap item needs a label and a value');
+    assert.strictEqual(recap.next, C.levelList[n].name, `recap of level ${n} must point to the next piece`);
+  });
+
+  test(`level ${n}: every wrong move says what to try next (never just "incorrect")`, () => {
+    for (const step of C.levels[n].steps) {
+      const specs = [];
+      if (step.outcomes) specs.push(...Object.entries(step.outcomes).map(([k, v]) => [`${step.id}.${k}`, v]));
+      for (const event of step.events || []) {
+        if (event.outcomes) specs.push(...Object.entries(event.outcomes).map(([k, v]) => [`${step.id}.event.${k}`, v]));
+        if (event.wrongReply) specs.push([`${step.id}.wrongReply`, { type: 'hint', reply: event.wrongReply }]);
+      }
+      for (const [name, spec] of specs) {
+        if (spec.type !== 'hint') continue;
+        assert.match(spec.reply, /\b(?:tap|type|write|try|say|read)\b/i, `${name} does not say what to do`);
+        assert.ok(!/\bincorrect\b|\bwrong\b/i.test(spec.reply), `${name} just says wrong`);
+        assert.ok(spec.reply.length > 20, `${name} needs a real answer`);
+      }
+    }
   });
 }
 
-test('the reading level stays plain: short sentences, short words', () => {
-  const texts = [];
-  const walk = (value) => {
-    if (typeof value === 'string') texts.push(value);
-    else if (value && typeof value === 'object') Object.values(value).forEach(walk);
-  };
-  walk(C.levels);
-  walk(C.ui);
-  walk(C.firstWin);
+test('the reading level stays plain: short sentences', () => {
   const long = [];
-  for (const t of texts) {
+  for (const t of [...allStrings(C.levels), ...allStrings(C.ui), ...allStrings(C.firstWin)]) {
     for (const sentence of t.split(/(?<=[.!?])\s+/)) {
       if (sentence.split(/\s+/).length > 28) long.push(sentence.slice(0, 60));
     }
@@ -97,16 +172,41 @@ test('the reading level stays plain: short sentences, short words', () => {
   assert.deepStrictEqual(long, [], 'sentences over 28 words');
 });
 
-test('the real tool is named only with facts that have a documented source', () => {
-  const all = JSON.stringify(C.levels);
-  assert.ok(!/\/rewind|Shift\+Tab|\/init|Esc/.test(all), 'level 1 must not teach commands that belong to later levels');
+test('every command, key or label the lessons teach appears in facts.js with a documented source', () => {
+  const lessons = allStrings(C.levels).join('\n');
+  const known = JSON.stringify(facts);
+  const mentioned = new Set(lessons.match(/\/[a-z]{3,}\b|Shift\+Tab|\bEsc\b/g) || []);
+  assert.ok(mentioned.size >= 3, 'the lessons should mention /init, /rewind and a key');
+  for (const item of mentioned) assert.ok(known.includes(item), `"${item}" is taught but is not in facts.js`);
+  for (const label of ['Manual', 'Accept edits', 'Plan', 'Auto']) {
+    assert.ok(lessons.includes(label), `mode "${label}" is missing from the lessons`);
+    assert.ok(known.includes(label), `mode "${label}" is not in facts.js`);
+  }
+  for (const group of ['start', 'prompts', 'permissionModes', 'rulebook', 'undo']) {
+    assert.match(facts[group].source, /^https:\/\/code\.claude\.com\/docs\/en\//, `${group}: source`);
+  }
+});
+
+test('level 1 does not teach commands that belong to later levels', () => {
+  assert.ok(!/\/rewind|Shift\+Tab|\/init|Esc/.test(JSON.stringify(C.levels[1])));
   assert.match(C.levels[1].recap.realStart, new RegExp(facts.start.terminalCommand));
   assert.match(C.levels[1].recap.realStart, new RegExp(facts.start.desktopTab));
-  assert.match(facts.start.source, /^https:\/\/code\.claude\.com\/docs\/en\//);
-  assert.match(facts.start.sourceDesktop, /^https:\/\/code\.claude\.com\/docs\/en\//);
+});
+
+test('the mode that asks first is called Manual, as in the official documentation', () => {
+  assert.strictEqual(facts.permissionModes.askFirstLabel, 'Manual');
+  assert.strictEqual(C.levels[4].steps[0].groups[0].options[0].text, 'Manual');
 });
 
 test('desktop undo stays out of the game until the owner confirms it', () => {
   assert.strictEqual(facts.undo.desktopControl, null);
-  assert.ok(!/desktop/i.test(JSON.stringify(C.levels)) || /Code tab/.test(JSON.stringify(C.levels)), 'desktop may be named only to say how to start');
+  const lessons = allStrings(C.levels).join('\n');
+  assert.ok(!/rewind button|undo button|desktop.{0,30}(undo|rewind)/i.test(lessons), 'no desktop undo control may be described');
+  assert.match(lessons, /\/rewind/);
+});
+
+test('the two documented limits of undo are taught', () => {
+  const recap = JSON.stringify(C.levels[4].recap);
+  assert.match(recap, /not files changed only by a command/);
+  assert.match(recap, /With text in the box, Esc twice clears the text/);
 });

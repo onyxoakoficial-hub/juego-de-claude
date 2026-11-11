@@ -59,6 +59,14 @@ const PAIRS = [
   ['c-on-accent', 'c-accent', UI, 'check badge on a chosen tile']
 ];
 
+/* The preview page: every heading color on every page background, and its text and footer. */
+const DEMO_BACKGROUNDS = ['c-demo-paper', 'c-demo-bg-green', 'c-demo-bg-blue', 'c-demo-bg-red'];
+for (const bg of DEMO_BACKGROUNDS) {
+  for (const fg of ['c-demo-ink', 'c-demo-muted', 'c-demo-green', 'c-demo-blue', 'c-demo-red']) {
+    PAIRS.push([fg, bg, TEXT, `preview page: ${fg.replace('c-demo-', '')} on ${bg.replace('c-demo-', '')}`]);
+  }
+}
+
 const tokens = readColorTokens();
 
 function solid(name, set, backdrop) {

@@ -180,11 +180,23 @@ test('fonts ship with their licences', () => {
   }
 });
 
-test('size budget: under 100 KB of JavaScript, and a light first load', () => {
-  const size = (filter) => files.filter(filter).reduce((sum, f) => sum + fs.statSync(f).size, 0);
-  const js = size((f) => f.endsWith('.js'));
-  const landing = size((f) => /index\.html$|\.css$|\.js$|\.woff2$|grain\.png$|favicon\.svg$/.test(f) && !/play\.(css|js)$/.test(f) && !/engine\.js$/.test(f));
-  console.log(`JavaScript: ${(js / 1024).toFixed(1)} KB.  Landing page, everything it loads: ${(landing / 1024).toFixed(1)} KB (uncompressed).`);
-  assert.ok(js < 100 * 1024, `JavaScript is ${js} bytes`);
-  assert.ok(landing < 1024 * 1024, `landing page is ${landing} bytes`);
+test('size budget: every page loads under 100 KB of JavaScript and a light first load', () => {
+  const zlib = require('zlib');
+  const rows = [];
+  for (const page of pages) {
+    const html = read(page);
+    const scripts = [...html.matchAll(/<script[^>]*\bsrc="([^"]+)"/g)].map((m) => path.join(path.dirname(page), m[1]));
+    const raw = scripts.reduce((sum, f) => sum + fs.statSync(f).size, 0);
+    const packed = scripts.reduce((sum, f) => sum + zlib.gzipSync(fs.readFileSync(f), { level: 9 }).length, 0);
+    const everything = [page, ...scripts, ...[...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => path.join(path.dirname(page), m[1]))]
+      .reduce((sum, f) => sum + fs.statSync(f).size, 0) + files.filter((f) => /\.(woff2|png)$/.test(f)).reduce((sum, f) => sum + fs.statSync(f).size, 0);
+    rows.push(`${rel(page)}: JavaScript ${(raw / 1024).toFixed(1)} KB raw, ${(packed / 1024).toFixed(1)} KB compressed; whole page ${(everything / 1024).toFixed(0)} KB raw`);
+    assert.ok(raw < 100 * 1024, `${rel(page)} loads ${raw} bytes of JavaScript`);
+    assert.ok(everything < 1024 * 1024, `${rel(page)} loads ${everything} bytes in total`);
+  }
+  console.log(rows.join('\n'));
+});
+
+test('facts.js is data for the tests and for editing; no page needs to load it', () => {
+  for (const page of pages) assert.ok(!read(page).includes('facts.js'), `${rel(page)} loads facts.js for nothing`);
 });
