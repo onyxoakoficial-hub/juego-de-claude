@@ -1,0 +1,267 @@
+/*
+  Checkmate design tokens.
+  Every colour, size, space, radius, shadow, duration and easing used on the site is defined here.
+  No other stylesheet may use a raw value (tests/tokens-lint.test.js checks this).
+
+  Concept: "tournament set on felt" - bone ivory, ebony ink, one felt-green accent.
+  Colours are authored in OKLCH. The first block is the sRGB fallback for browsers
+  without OKLCH support; tests/contrast.test.js checks that both blocks match.
+*/
+
+/* ---------- Colour: sRGB fallback ---------- */
+:root {
+  color-scheme: light dark;
+  --c-surface: #f5f5ec;
+  --c-surface-raised: #fcfbf6;
+  --c-surface-sunk: #ecece0;
+  --c-ink: #111812;
+  --c-ink-muted: #465047;
+  --c-line: rgba(17, 24, 18, 0.12);
+  --c-line-strong: #727e74;
+  --c-accent: #185b37;
+  --c-accent-hover: #074a28;
+  --c-accent-press: #003c1d;
+  --c-on-accent: #fcfbf6;
+  --c-accent-soft: #d5eedc;
+  --c-on-accent-soft: #042c17;
+  --c-band: #111812;
+  --c-band-raised: #1c241d;
+  --c-on-band: #efefe6;
+  --c-on-band-muted: #b8b8ae;
+  --c-band-line: rgba(239, 239, 230, 0.16);
+  --c-square-light: #e2dfc9;
+  --c-square-dark: #476e54;
+  --c-piece-dark: #111812;
+  --c-piece-light: #f6f6ed;
+  --c-error: #af2b25;
+  --c-warn: #ad7300;
+  --c-focus: #185b37;
+  --c-focus-on-band: #81d39f;
+  --c-shadow-near: rgba(12, 26, 15, 0.1);
+  --c-shadow-far: rgba(12, 26, 15, 0.08);
+  --c-shadow-deep: rgba(2, 7, 3, 0.32);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-surface: #101511;
+    --c-surface-raised: #1b211c;
+    --c-surface-sunk: #090e0a;
+    --c-ink: #e9e8df;
+    --c-ink-muted: #aeafa4;
+    --c-line: rgba(233, 232, 223, 0.14);
+    --c-line-strong: #6a756b;
+    --c-accent: #6ebf8c;
+    --c-accent-hover: #81d39f;
+    --c-accent-press: #62ab7d;
+    --c-on-accent: #101511;
+    --c-accent-soft: #193825;
+    --c-on-accent-soft: #c5e8d0;
+    --c-band: #090e0a;
+    --c-band-raised: #141a15;
+    --c-on-band: #e9e8df;
+    --c-on-band-muted: #aeafa4;
+    --c-band-line: rgba(233, 232, 223, 0.14);
+    --c-square-light: #a29f8a;
+    --c-square-dark: #264531;
+    --c-piece-dark: #0a0f0b;
+    --c-piece-light: #efefe6;
+    --c-error: #f2897c;
+    --c-warn: #e6b55d;
+    --c-focus: #6ebf8c;
+    --c-focus-on-band: #81d39f;
+    --c-shadow-near: rgba(2, 4, 2, 0.4);
+    --c-shadow-far: rgba(2, 4, 2, 0.3);
+    --c-shadow-deep: rgba(1, 2, 1, 0.5);
+  }
+}
+
+/* ---------- Colour: OKLCH (source of truth) ---------- */
+@supports (color: oklch(0 0 0)) {
+  :root {
+    --c-surface: oklch(0.968 0.012 105);
+    --c-surface-raised: oklch(0.988 0.007 105);
+    --c-surface-sunk: oklch(0.94 0.016 105);
+    --c-ink: oklch(0.2 0.015 150);
+    --c-ink-muted: oklch(0.42 0.02 150);
+    --c-line: oklch(0.2 0.015 150 / 0.12);
+    --c-line-strong: oklch(0.58 0.02 150);
+    --c-accent: oklch(0.42 0.09 155);
+    --c-accent-hover: oklch(0.36 0.085 155);
+    --c-accent-press: oklch(0.31 0.08 155);
+    --c-on-accent: oklch(0.988 0.007 105);
+    --c-accent-soft: oklch(0.925 0.035 155);
+    --c-on-accent-soft: oklch(0.26 0.06 155);
+    --c-band: oklch(0.2 0.015 150);
+    --c-band-raised: oklch(0.25 0.018 150);
+    --c-on-band: oklch(0.95 0.012 105);
+    --c-on-band-muted: oklch(0.78 0.015 110);
+    --c-band-line: oklch(0.95 0.012 105 / 0.16);
+    --c-square-light: oklch(0.9 0.03 100);
+    --c-square-dark: oklch(0.5 0.06 155);
+    --c-piece-dark: oklch(0.2 0.015 150);
+    --c-piece-light: oklch(0.97 0.012 105);
+    --c-error: oklch(0.5 0.17 28);
+    --c-warn: oklch(0.6 0.13 75);
+    --c-focus: oklch(0.42 0.09 155);
+    --c-focus-on-band: oklch(0.8 0.11 155);
+    --c-shadow-near: oklch(0.2 0.03 150 / 0.1);
+    --c-shadow-far: oklch(0.2 0.03 150 / 0.08);
+    --c-shadow-deep: oklch(0.12 0.02 150 / 0.32);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --c-surface: oklch(0.19 0.012 150);
+      --c-surface-raised: oklch(0.24 0.014 150);
+      --c-surface-sunk: oklch(0.155 0.012 150);
+      --c-ink: oklch(0.93 0.012 105);
+      --c-ink-muted: oklch(0.75 0.015 110);
+      --c-line: oklch(0.93 0.012 105 / 0.14);
+      --c-line-strong: oklch(0.55 0.02 150);
+      --c-accent: oklch(0.74 0.11 155);
+      --c-accent-hover: oklch(0.8 0.11 155);
+      --c-accent-press: oklch(0.68 0.1 155);
+      --c-on-accent: oklch(0.19 0.012 150);
+      --c-accent-soft: oklch(0.31 0.05 155);
+      --c-on-accent-soft: oklch(0.9 0.05 155);
+      --c-band: oklch(0.155 0.012 150);
+      --c-band-raised: oklch(0.21 0.014 150);
+      --c-on-band: oklch(0.93 0.012 105);
+      --c-on-band-muted: oklch(0.75 0.015 110);
+      --c-band-line: oklch(0.93 0.012 105 / 0.14);
+      --c-square-light: oklch(0.7 0.03 100);
+      --c-square-dark: oklch(0.36 0.05 155);
+      --c-piece-dark: oklch(0.16 0.012 150);
+      --c-piece-light: oklch(0.95 0.012 105);
+      --c-error: oklch(0.74 0.13 28);
+      --c-warn: oklch(0.8 0.12 80);
+      --c-focus: oklch(0.74 0.11 155);
+      --c-focus-on-band: oklch(0.8 0.11 155);
+      --c-shadow-near: oklch(0.1 0.01 150 / 0.4);
+      --c-shadow-far: oklch(0.1 0.01 150 / 0.3);
+      --c-shadow-deep: oklch(0.08 0.01 150 / 0.5);
+    }
+  }
+}
+
+/* ---------- Everything else ---------- */
+:root {
+  /* Type families: one display, one text. Commands and file names use the system monospace. */
+  --font-display: "Fraunces", "Fraunces Fallback", "Fraunces Fallback Android", Georgia, "Noto Serif", serif;
+  --font-text: "Atkinson Hyperlegible Next", "Atkinson Fallback", "Atkinson Fallback Android", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* Type scale: six sizes, ratio near 1.25. */
+  --fs-100: 0.875rem;
+  --fs-200: 1.0625rem;
+  --fs-300: 1.25rem;
+  --fs-400: 1.5625rem;
+  --fs-500: clamp(1.5625rem, 1.3rem + 1.2vw, 2.25rem);
+  --fs-600: clamp(1.75rem, 1.25rem + 2vw, 3rem);
+
+  /* Weights: three in total. */
+  --fw-body: 400;
+  --fw-strong: 700;
+  --fw-display: 600;
+
+  --lh-body: 1.6;
+  --lh-snug: 1.35;
+  --lh-tight: 1.1;
+
+  --ls-display: -0.02em;
+  --ls-heading: -0.01em;
+  --ls-label: 0.08em;
+
+  --measure: 65ch;
+  --measure-short: 34ch;
+  --measure-heading: 18ch;
+
+  /* Space: 4px base unit. */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4rem;
+  --sp-9: 6rem;
+  --sp-10: 8rem;
+
+  /* Layout. */
+  --container: 75rem;
+  --gutter: clamp(1rem, 5vw, 4rem);
+  --section-y: clamp(3.5rem, 8vw, 7rem);
+  --header-h: 3.5rem;
+  --tap: 2.75rem;
+  --btn-h: 3rem;
+  --vh-full: 100dvh;
+
+  /* Sizes of fixed parts. */
+  --icon-sm: 1rem;
+  --icon-md: 1.25rem;
+  --icon-lg: 1.75rem;
+  --badge: 1.25rem;
+  --step-dot: 1.5rem;
+  --sq: clamp(3.5rem, 2.6rem + 5vw, 4.75rem);
+  --piece-scale: 78%;
+  --preview-min: 9rem;
+  --numeral: 3.5rem;
+
+  /* Radius: one scale. Small radii keep the set formal. */
+  --r-1: 0.125rem;
+  --r-2: 0.375rem;
+  --r-3: 0.625rem;
+  --r-4: 1rem;
+  --r-full: 62.5rem;
+
+  /* Lines. */
+  --hairline: 1px;
+  --line-bold: 2px;
+  --focus-w: 2px;
+  --focus-offset: 2px;
+
+  /* Elevation: three levels, two layers each, light from above. */
+  --shadow-1: 0 1px 1px var(--c-shadow-near), 0 2px 6px var(--c-shadow-far);
+  --shadow-2: 0 1px 2px var(--c-shadow-near), 0 8px 24px var(--c-shadow-far);
+  --shadow-3: 0 2px 4px var(--c-shadow-near), 0 18px 40px var(--c-shadow-deep);
+  --shadow-inset: inset 0 1px 2px var(--c-shadow-near);
+
+  /* Texture. */
+  --grain: url("../assets/img/grain.png");
+  --grain-size: 8rem;
+
+  /* Motion: only the piece move, the permission prompt and the win use it. */
+  --dur-instant: 120ms;
+  --dur-state: 240ms;
+  --dur-move: 400ms;
+  --dur-win: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --shift-in: 0.5rem;
+  --shift-piece: -1rem;
+  --shift-press: 1px;
+  --scale-in: 0.96;
+  --half-turn: 180deg;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Light text on dark reads thinner: one small weight step up. */
+    --fw-body: 450;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    /* Movement is replaced by a short fade. */
+    --dur-move: 120ms;
+    --dur-win: 120ms;
+    --dur-state: 120ms;
+    --shift-in: 0rem;
+    --shift-piece: 0rem;
+    --shift-press: 0px;
+    --scale-in: 1;
+  }
+}

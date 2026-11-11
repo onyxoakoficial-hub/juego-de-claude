@@ -1,0 +1,255 @@
+/*
+  Components shared by every page: header, labels, buttons, cards, footer.
+  Uses tokens only.
+*/
+
+/* ---------- Header ---------- */
+.site-header {
+  border-bottom: var(--hairline) solid var(--c-line);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-height: var(--header-h);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  font-family: var(--font-display);
+  font-size: var(--fs-300);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--ls-heading);
+  text-decoration: none;
+}
+
+.wordmark__mark {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  color: var(--c-accent);
+}
+
+.site-header__note {
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+  text-align: right;
+}
+
+/* ---------- Small labels ---------- */
+.eyebrow,
+.label {
+  font-size: var(--fs-100);
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  color: var(--c-ink-muted);
+}
+
+.label__note {
+  font-weight: var(--fw-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.fine {
+  font-size: var(--fs-100);
+  color: var(--c-ink-muted);
+}
+
+/* ---------- Buttons: one primary, one secondary, one text ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--btn-h);
+  padding: var(--sp-2) var(--sp-5);
+  border: var(--hairline) solid transparent;
+  border-radius: var(--r-2);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-snug);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) var(--ease-out),
+    border-color var(--dur-instant) var(--ease-out),
+    transform var(--dur-instant) var(--ease-out);
+}
+
+.btn:active {
+  transform: translateY(var(--shift-press));
+}
+
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.btn--primary {
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+  box-shadow: var(--shadow-1);
+}
+
+.btn--primary:active {
+  background-color: var(--c-accent-press);
+  box-shadow: none;
+}
+
+.btn--secondary {
+  background-color: transparent;
+  border-color: var(--c-line-strong);
+  color: var(--c-ink);
+}
+
+.btn--secondary:active {
+  background-color: var(--c-surface-sunk);
+}
+
+.btn--text {
+  min-height: var(--tap);
+  padding-inline: var(--sp-2);
+  background-color: transparent;
+  color: var(--c-ink);
+  font-weight: var(--fw-body);
+  text-decoration: underline;
+  text-decoration-thickness: var(--hairline);
+  text-underline-offset: var(--sp-1);
+}
+
+.btn[disabled],
+.btn[aria-disabled="true"] {
+  background-color: var(--c-surface-sunk);
+  border-color: var(--c-line);
+  color: var(--c-ink-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover {
+    background-color: var(--c-accent-hover);
+  }
+
+  .btn--secondary:hover {
+    background-color: var(--c-surface-sunk);
+    border-color: var(--c-ink);
+  }
+
+  .btn--text:hover {
+    text-decoration-thickness: var(--line-bold);
+  }
+
+  .btn[disabled]:hover,
+  .btn[aria-disabled="true"]:hover {
+    background-color: var(--c-surface-sunk);
+    border-color: var(--c-line);
+  }
+}
+
+/* ---------- Card: paper on the table ---------- */
+.card {
+  padding: var(--sp-5);
+  border: var(--hairline) solid var(--c-line);
+  border-radius: var(--r-3);
+  background-color: var(--c-surface-raised);
+  box-shadow: var(--shadow-2);
+}
+
+/* ---------- Band: the dark tabletop ---------- */
+.band {
+  background-color: var(--c-band);
+  background-image: var(--grain);
+  background-size: var(--grain-size);
+  color: var(--c-on-band);
+}
+
+.band :focus-visible {
+  outline-color: var(--c-focus-on-band);
+}
+
+.band .eyebrow,
+.band .fine {
+  color: var(--c-on-band-muted);
+}
+
+/* ---------- Sections ---------- */
+.section {
+  padding-block: var(--section-y);
+}
+
+.section__head {
+  display: grid;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-7);
+  max-width: var(--measure);
+}
+
+.section__lead {
+  font-size: var(--fs-300);
+  line-height: var(--lh-snug);
+  color: var(--c-ink-muted);
+}
+
+.band .section__lead {
+  color: var(--c-on-band-muted);
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  padding-block: var(--sp-8);
+  padding-bottom: calc(var(--sp-8) + env(safe-area-inset-bottom, 0));
+}
+
+.site-footer__inner {
+  display: grid;
+  gap: var(--sp-6);
+}
+
+.site-footer__brand {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.site-footer .wordmark__mark {
+  color: var(--c-on-band);
+}
+
+.site-footer__legal {
+  display: grid;
+  gap: var(--sp-3);
+  max-width: var(--measure);
+  padding-top: var(--sp-5);
+  border-top: var(--hairline) solid var(--c-band-line);
+  font-size: var(--fs-100);
+  color: var(--c-on-band-muted);
+}
+
+@media (min-width: 48em) {
+  .site-footer__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  .site-footer__legal {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+/* ---------- Windows high-contrast mode keeps button edges ---------- */
+@media (forced-colors: active) {
+  .btn {
+    border-color: ButtonText;
+  }
+}

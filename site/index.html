@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Checkmate — a practice game for learning Claude Code</title>
+  <meta name="description" content="Checkmate is a free practice game for complete beginners. Learn to direct Claude Code in six short, chess-themed levels. No sign-up. Nothing to install.">
+  <meta name="theme-color" content="#f5f5ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101511" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <script defer src="content/en.js"></script>
+  <script defer src="js/first-win.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Original chess pieces and icons, drawn for this project. One style: solid shapes with thin cut lines. -->
+  <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="piece-pawn" viewBox="0 0 48 48">
+      <circle cx="24" cy="13.5" r="6.5"/>
+      <rect x="17.5" y="21.5" width="13" height="2.5" rx="1.25"/>
+      <path d="M20.5 25.5C20.5 30 17 31.5 16.5 34h15C31 31.5 27.5 30 27.5 25.5z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="piece-knight" viewBox="0 0 48 48">
+      <path fill-rule="evenodd" d="M16.5 34c0-5.5 5-7 5-11.5l-6 2.7c-1.9.8-4.3-.6-3.9-2.8l5.6-9.8 1-5.4 4.2 3c7.1 1.3 10.6 9.8 9.1 23.8zM18.6 15.3a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 0 0 0-2.2z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="piece-bishop" viewBox="0 0 48 48">
+      <circle cx="24" cy="6.5" r="2"/>
+      <path fill-rule="evenodd" d="M24 9.8c4.5 3.7 6.5 7.2 6.5 10.2 0 2.6-1.7 4.2-4 4.5h-5c-2.3-.3-4-1.9-4-4.5 0-3 2-6.5 6.5-10.2zM26.9 14.2l1.1.9-4.6 5.6-1.1-.9z"/>
+      <rect x="18" y="26" width="12" height="2.5" rx="1.25"/>
+      <path d="M21 30c0 2-3.5 2.5-4.5 4h15c-1-1.5-4.5-2-4.5-4z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="piece-rook" viewBox="0 0 48 48">
+      <path d="M14.5 7H19v3.5h3V7h4v3.5h3V7h4.5v9.5a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1z"/>
+      <path d="M17.5 19h13l1.2 15H16.3z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="piece-queen" viewBox="0 0 48 48">
+      <circle cx="24" cy="6.2" r="1.9"/>
+      <circle cx="14.8" cy="10.2" r="1.7"/>
+      <circle cx="33.2" cy="10.2" r="1.7"/>
+      <path d="M14.8 13l3.7 9.5h11L33.2 13l-5 4.2L24 9.5l-4.2 7.7z"/>
+      <rect x="17.5" y="24" width="13" height="2.5" rx="1.25"/>
+      <path d="M20 28c0 3-3 4-3.5 6h15c-.5-2-3.5-3-3.5-6z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="piece-king" viewBox="0 0 48 48">
+      <path d="M22.9 3.5h2.2v2.1H28v2.2h-2.9V11h-2.2V7.8H20V5.6h2.9z"/>
+      <path d="M16 12.5c3.5-1.2 12.5-1.2 16 0l-2.5 10h-11z"/>
+      <rect x="17.5" y="24" width="13" height="2.5" rx="1.25"/>
+      <path d="M20 28c0 3-3 4-3.5 6h15c-.5-2-3.5-3-3.5-6z"/>
+      <path d="M14.5 38.5l1.8-3h15.4l1.8 3z"/>
+      <path d="M11 44v-1.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V44z"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24">
+      <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-cross" viewBox="0 0 24 24">
+      <path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24">
+      <path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="wordmark" href="index.html" aria-label="Checkmate, home">
+        <svg class="wordmark__mark" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-king"/></svg>
+        <span>Checkmate</span>
+      </a>
+      <p class="site-header__note">Unofficial practice game</p>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <p class="eyebrow">Free practice game for beginners</p>
+          <h1 id="hero-title">Learn Claude Code, one chess move at a time.</h1>
+          <p class="lead">You decide the move. The assistant makes it, but only after you say yes.</p>
+        </div>
+
+        <div class="demo card" data-demo>
+          <ol class="steps" aria-label="The three steps of your first move">
+            <li class="steps__item" data-step="build" aria-current="step"><span class="steps__n" aria-hidden="true">1</span>Build</li>
+            <li class="steps__item" data-step="ask"><span class="steps__n" aria-hidden="true">2</span>Say yes</li>
+            <li class="steps__item" data-step="done"><span class="steps__n" aria-hidden="true">3</span>See it</li>
+          </ol>
+
+          <h2 class="visually-hidden" id="demo-title">Your first move</h2>
+          <p class="demo__task" id="demo-task" data-task>Tap the words to build an instruction.</p>
+
+          <div class="say" role="group" aria-labelledby="say-label">
+            <span class="say__label label" id="say-label">You say</span>
+            <p class="say__line" data-say data-empty aria-live="polite">No words yet.</p>
+          </div>
+
+          <div class="chips" role="group" aria-labelledby="demo-task" data-chips>
+            <button type="button" class="chip" aria-pressed="false" data-chip data-slot="action">Make<svg class="chip__check" aria-hidden="true" focusable="false"><use href="#icon-check"/></svg></button>
+            <button type="button" class="chip" aria-pressed="false" data-chip data-slot="object">a web page<svg class="chip__check" aria-hidden="true" focusable="false"><use href="#icon-check"/></svg></button>
+            <button type="button" class="chip" aria-pressed="false" data-chip data-slot="text" data-value="Hello, chess club">that says “Hello, chess club”<svg class="chip__check" aria-hidden="true" focusable="false"><use href="#icon-check"/></svg></button>
+          </div>
+
+          <div class="demo__actions" data-actions>
+            <button type="button" class="btn btn--primary btn--block" data-announce>Announce move</button>
+            <p class="fine">No sign-up. Nothing to install.</p>
+          </div>
+
+          <noscript>
+            <p class="demo__noscript">This game needs JavaScript to run. Turn it on in your browser to play. The rest of this page still explains how the game works.</p>
+          </noscript>
+
+          <div class="reply" data-reply hidden>
+            <span class="reply__who label">The assistant</span>
+            <p class="reply__text" data-reply-text></p>
+          </div>
+
+          <div class="ask" data-ask role="group" aria-labelledby="ask-title ask-question" tabindex="-1" hidden>
+            <p class="label" id="ask-title">The assistant asks</p>
+            <p class="ask__question" id="ask-question" data-ask-question></p>
+            <p class="ask__change"><span aria-hidden="true">+</span> <code data-ask-file></code> <span>new file</span></p>
+            <div class="ask__buttons">
+              <button type="button" class="btn btn--primary" data-yes>Yes, go ahead</button>
+              <button type="button" class="btn btn--secondary" data-no>No</button>
+            </div>
+          </div>
+
+          <!-- Screen readers hear every answer here. Always present, so announcements are reliable. -->
+          <p class="visually-hidden" role="status" data-live></p>
+        </div>
+
+        <div class="table band" data-table>
+          <figure class="table__part board">
+            <figcaption class="label">The board <span class="label__note">is your project folder</span></figcaption>
+            <div class="board__rank" aria-hidden="true">
+              <span class="sq sq--dark"><svg class="piece" data-piece fill="currentColor" focusable="false" hidden><use href="#piece-pawn"/></svg></span>
+              <span class="sq sq--light"></span>
+              <span class="sq sq--dark"></span>
+              <span class="sq sq--light"></span>
+            </div>
+            <div class="board__files" aria-hidden="true"><span data-file-label></span></div>
+            <p class="board__status" data-board-status>Empty. No files yet.</p>
+          </figure>
+
+          <figure class="table__part preview">
+            <figcaption class="label">Preview <span class="label__note">shows what the assistant made</span></figcaption>
+            <div class="preview__window">
+              <p class="preview__bar" data-preview-bar>No file open</p>
+              <div class="preview__page">
+                <p class="preview__empty" data-preview-empty>Your page will show up here after your first move.</p>
+                <p class="preview__heading" data-preview-heading hidden></p>
+              </div>
+            </div>
+          </figure>
+
+          <div class="win" data-win aria-labelledby="win-title" tabindex="-1" hidden>
+            <svg class="win__mark" aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>
+            <h2 class="win__title" id="win-title">Your first move is on the board.</h2>
+            <p>You said what you wanted in plain words. The assistant asked before it changed anything. You said yes.</p>
+            <p class="win__terms">Two new words. The instruction you gave is called a <strong>prompt</strong>. The thing the assistant made is called a <strong>file</strong>.</p>
+            <div class="win__actions">
+              <a class="btn btn--primary" href="play.html">Start level 1</a>
+              <button type="button" class="btn btn--text" data-reset>Play that move again</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section how" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="how-title">How the game works</h2>
+        </div>
+        <ol class="how__steps">
+          <li class="how__step">
+            <span class="how__n" aria-hidden="true">1</span>
+            <h3>You announce a move</h3>
+            <p>Say what you want in plain words. No code. No special commands.</p>
+          </li>
+          <li class="how__step">
+            <span class="how__n" aria-hidden="true">2</span>
+            <h3>The assistant asks first</h3>
+            <p>It tells you what it is about to change. Then it waits for your answer.</p>
+          </li>
+          <li class="how__step">
+            <span class="how__n" aria-hidden="true">3</span>
+            <h3>The piece moves</h3>
+            <p>Say yes and you see the result right away. Say no and nothing changes.</p>
+          </li>
+        </ol>
+        <p class="how__real">The real Claude Code works the same way. You describe what you want, and it writes the code for you. This game lets you practice first, with nothing to break.</p>
+      </div>
+    </section>
+
+    <section class="section levels band" aria-labelledby="levels-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="levels-title">Six pieces. Six skills.</h2>
+          <p class="section__lead">Each level teaches one idea and gives you one task. You move on when you can do it without hints.</p>
+        </div>
+        <ol class="rank">
+          <li class="rank__item">
+            <span class="rank__sq sq sq--dark"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-pawn"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">Pawn <span class="rank__move">The first move</span></h3>
+              <p>Tell the assistant what you want and watch a page appear.</p>
+            </div>
+          </li>
+          <li class="rank__item">
+            <span class="rank__sq sq sq--light"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-knight"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">Knight <span class="rank__move">The unexpected jump</span></h3>
+              <p>Ask for a change. See why exact words get exact results.</p>
+            </div>
+          </li>
+          <li class="rank__item">
+            <span class="rank__sq sq sq--dark"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-bishop"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">Bishop <span class="rank__move">The long diagonal</span></h3>
+              <p>Write a short rulebook the assistant reads before every game.</p>
+            </div>
+          </li>
+          <li class="rank__item">
+            <span class="rank__sq sq sq--light"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-rook"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">Rook <span class="rank__move">The straight line</span></h3>
+              <p>Say yes, say no, and take back a move.</p>
+            </div>
+          </li>
+          <li class="rank__item">
+            <span class="rank__sq sq sq--dark"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-queen"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">Queen <span class="rank__move">Full power</span></h3>
+              <p>Ask for a plan first. Change it. Then approve it.</p>
+            </div>
+          </li>
+          <li class="rank__item">
+            <span class="rank__sq sq sq--light"><svg class="piece" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-king"/></svg></span>
+            <div class="rank__text">
+              <h3 class="rank__name">King <span class="rank__move">Checkmate</span></h3>
+              <p>Direct a small page from blank to done, with no hints.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section fit" aria-labelledby="practice-title">
+      <div class="container fit__grid">
+        <div class="fit__col">
+          <h2 id="practice-title">What you will practice</h2>
+          <ul class="ticks">
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Asking for what you want in plain words</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Getting a change right by being exact</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Writing standing rules for a project</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Saying yes, saying no, and undoing a change</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Asking for a plan before anything is changed</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>Starting your first real session, step by step</li>
+          </ul>
+        </div>
+        <div class="fit__col">
+          <h2>Who it is for</h2>
+          <div class="fit__group">
+            <h3>For you if</h3>
+            <ul class="ticks">
+              <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>You have never written code.</li>
+              <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>You have heard of AI tools but never built anything with one.</li>
+              <li><svg aria-hidden="true" focusable="false"><use href="#icon-check"/></svg>You want to try before you install or pay for anything.</li>
+            </ul>
+          </div>
+          <div class="fit__group fit__group--no">
+            <h3>Not for you if</h3>
+            <ul class="ticks">
+              <li><svg aria-hidden="true" focusable="false"><use href="#icon-cross"/></svg>You already use Claude Code. Its official documentation will serve you better.</li>
+              <li><svg aria-hidden="true" focusable="false"><use href="#icon-cross"/></svg>You want the real tool right now. This is a practice game, and no AI runs here.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section proof" aria-labelledby="proof-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="proof-title">Nothing hidden</h2>
+        </div>
+        <dl class="facts">
+          <div class="facts__item">
+            <dt>Checked against the official documentation</dt>
+            <dd>Every fact about Claude Code in this game comes from its official documentation. Last checked on <time datetime="2026-11-10" data-checked-on>10 November 2026</time>.</dd>
+          </div>
+          <div class="facts__item">
+            <dt>No sign-up and no tracking</dt>
+            <dd>No account. No ads. No analytics. This page loads nothing from other websites.</dd>
+          </div>
+          <div class="facts__item">
+            <dt>A practice game, clearly labeled</dt>
+            <dd>Every answer from the assistant here is written in advance. No AI runs in this game. It is an independent project, not made by Anthropic.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section faq" aria-labelledby="faq-title">
+      <div class="container">
+        <div class="section__head">
+          <h2 id="faq-title">Questions</h2>
+        </div>
+        <div class="faq__list">
+          <details class="faq__item">
+            <summary class="faq__q">What is Claude Code?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>Claude Code is a tool made by Anthropic. You tell it what you want in plain words, and it writes the code for you.</p>
+              <p>This game is not Claude Code. It is a safe place to practice how to work with it.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">Is it free?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>The game is free and has no sign-up.</p>
+              <p>The real Claude Code is a paid product. Anthropic's website lists what you need to use it.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">Do I need to know how to code?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>No. The game starts from zero. Every new word is explained at the moment you need it.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">What do I need to play?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>A phone, a tablet or a computer with a web browser.</p>
+              <p>Later, for the first real session this game prepares you for, you will need a computer.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">Does a real AI answer me here?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>No. Every answer in this game is written in advance. That keeps the game free, private and the same for everyone.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">What do you store about me?<svg aria-hidden="true" focusable="false"><use href="#icon-chevron"/></svg></summary>
+            <div class="faq__a">
+              <p>Nothing. This page does not save or send anything.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section final" aria-labelledby="final-title">
+      <div class="container">
+        <div class="final__inner">
+          <h2 id="final-title">The Pawn is waiting for your next move.</h2>
+          <a class="btn btn--primary" href="play.html">Start level 1</a>
+          <p class="fine">Free. No sign-up. Nothing to install.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer band">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <p class="wordmark"><svg class="wordmark__mark" fill="currentColor" aria-hidden="true" focusable="false"><use href="#piece-king"/></svg><span>Checkmate</span></p>
+        <p class="fine">A practice game for people who have never written code.</p>
+      </div>
+      <div class="site-footer__legal">
+        <p>Independent, unofficial project. Not affiliated with or endorsed by Anthropic. Claude Code is a trademark of Anthropic, PBC.</p>
+        <p>No personal data is collected. Nothing you do on this page leaves your device.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
